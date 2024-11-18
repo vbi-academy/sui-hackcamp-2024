@@ -1,0 +1,11 @@
+{
+  "index": "Sui Bootcamp 2024",
+  "introduction_to_sui": "Introduction to SUI",
+  "hello_move":"Hello Move",
+  "rakiapp": {
+    "title": "Sui Bootcamp - Video ↗",
+    "type": "page",
+    "href": "https://openedu101.com",
+    "newWindow": true
+  }
+}
