@@ -1,0 +1,132 @@
+# SUI CLI
+
+Sử dụng Sui CLI để tương tác với mạng Sui. 
+Ví dụ: 
+
++ Triển khai các hợp đồng thông minh Move 
++ Lấy thông tin của một đối tượng, 
++ Thực hiện giao dịch
++ Quản lý địa chỉ 
++ Quản lý môi trường tương tác (devnet, testnet, mainnet)
+
+
+
+
+## Thêm môi trường tương tác
+
+### Môi trường devnet
+
+```bash
+sui client new-env --alias=devnet --rpc https://fullnode.devnet.sui.io:443
+```
+
+Lưu ý: 
++ Deployed every week on Mondays.
+
+
+### Môi trường testnet
+
+```bash
+sui client new-env --alias=testnet --rpc https://fullnode.testnet.sui.io:443
+```
+Lưu ý: 
++ Deployed every week on Tuesdays.
+
+
+### Môi trường mainnet
+
+```bash
+sui client new-env --alias=mainnet --rpc https://fullnode.mainnet.sui.io:443
+```
+Lưu ý: 
+
++ Deployed every two weeks on Wednesdays.
+
+## Xem thông tin môi trường 
+
+```bash
+sui client envs
+```
+
+Kết quả:
+
+```bash
+╭─────────┬─────────────────────────────────────┬────────╮
+│ alias   │ url                                 │ active │
+├─────────┼─────────────────────────────────────┼────────┤
+│ testnet │ https://fullnode.testnet.sui.io:443 │        │
+│ devnet  │ https://fullnode.devnet.sui.io:443  │ *      │
+│ mainnet │ https://fullnode.mainnet.sui.io:443 │        │
+╰─────────┴─────────────────────────────────────┴────────╯
+```
+
+
+
+
+
+## Chọn môi trường muốn tương tác
+
+```
+sui client switch --env <tên network mà bạn đã alias>
+```
+
+Ví dụ: Chọn devnet  
+
+```bash
+sui client switch --env devnet
+```
+
+
+## Show address hiện tại bạn đang sử dụng 
+
+```bash
+sui client active-address                                                 
+>0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f
+```
+
+
+## Faucet coins cho address
+
+```bash
+sui client faucet
+>Request successful. It can take up to 1 minute to get the coin. Run sui client gas to check your gas coins.
+```
+
+## Kiểm tra gas coins của bạn 
+
+```bash
+sui client gas
+```
+
+Kết quả:
+
+```bash
+╭────────────────────────────────────────────────────────────────────┬────────────────────┬──────────────────╮
+│ gasCoinId                                                          │ mistBalance (MIST) │ suiBalance (SUI) │
+├────────────────────────────────────────────────────────────────────┼────────────────────┼──────────────────┤
+│ 0xae0107b20bcf8cc6ff015debbf4d4ba70e4d4a00996695b55116ba0579e1ffcf │ 1000000000         │ 1.00             │
+╰────────────────────────────────────────────────────────────────────┴────────────────────┴──────────────────╯
+```
+
++ MIST là đơn vị nhỏ nhất của SUI 
++ 1 SUI = 1,000,000,000 MIST = 10^9 MIST
+
+## Transfer SUI coins to other address
+
+Lưu ý: 
+
+```bash
+sui client pay-sui --recipients <address> --input-coins <gasCoinId> --amounts <amount>
+```
+
+Ví dụ: 
+```bash
+sui client pay-sui --recipients 0x38a27343b6d4ca075e57ab1a5b7f6a50720d2a7fb106206ec1a9ebe54a273830 --input-coins 0xae0107b20bcf8cc6ff015debbf4d4ba70e4d4a00996695b55116ba0579e1ffcf --amounts 500000000
+```
+
+
+
+
+
+
+
