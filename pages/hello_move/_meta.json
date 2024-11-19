@@ -1,7 +1,8 @@
 {
     "move_environment" : "Setting up the Move environment",
     "sui_cli" : "Introduction to SUI CLI",
-    "hello_world_move" : "Create the first hello move project"
+    "hello_world_move" : "Create the first hello move project",
+    "introduction_to_suiscan": "Introduction to Suiscan"
   }
 
   

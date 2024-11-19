@@ -102,8 +102,6 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 ```
 
 
-Kết quả: 
-
 <details>
   <summary>Kết quả</summary>
 ```bash
@@ -238,6 +236,214 @@ Transaction Digest: 2zSX9dfsMUAAG8qYtGHy7scXM2d4jgEurohHrSUtYrGB
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 </details>
+
+
+## Call smart contract
+
+Cú pháp: 
+```bash
+sui client call --module <module> --function <function> --package <package-id> --gas-budget <gas-budget>
+```
+
+Ví dụ:
+
+
+```bash
+sui client call --module hello_world --function hello_world --package 0x431b31b72639bff5109fcb23656f8891d4a98324eb146126d7d8526a7bc0c4dd --gas-budget 100000000
+```
+
+
+<details>
+  <summary>Kết quả</summary>
+```bash
+Transaction Digest: 4D9a4ZDxfKKPcwwKxj6Ei8TjhZoeW4q3ryTifs9cusTZ
+╭─────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Data                                                                            │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                  │
+│ Gas Owner: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f               │
+│ Gas Budget: 100000000 MIST                                                                  │
+│ Gas Price: 1000 MIST                                                                        │
+│ Gas Payment:                                                                                │
+│  ┌──                                                                                        │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                   │
+│  │ Version: 8                                                                               │
+│  │ Digest: ECftyjH5LM4JcXEsLtMmHdiRYEobMA417ZF8w3nnQUvp                                     │
+│  └──                                                                                        │
+│                                                                                             │
+│ Transaction Kind: Programmable                                                              │
+│   No input objects for this transaction                                                     │
+│ ╭──────────────────────────────────────────────────────────────────────────────────╮        │
+│ │ Commands                                                                         │        │
+│ ├──────────────────────────────────────────────────────────────────────────────────┤        │
+│ │ 0  MoveCall:                                                                     │        │
+│ │  ┌                                                                               │        │
+│ │  │ Function:  hello_world                                                        │        │
+│ │  │ Module:    hello_world                                                        │        │
+│ │  │ Package:   0x431b31b72639bff5109fcb23656f8891d4a98324eb146126d7d8526a7bc0c4dd │        │
+│ │  └                                                                               │        │
+│ ╰──────────────────────────────────────────────────────────────────────────────────╯        │
+│                                                                                             │
+│ Signatures:                                                                                 │
+│    0wu+Mms0Gc7FMUSvIIAct9Xg7DxyoK2gSbFhPPKLBYGPgbmoMCHn25Y0FElE+F7gXuu5qHhcjWsXlW8fZBAbCA== │
+│                                                                                             │
+╰─────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Effects                                                                               │
+├───────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Digest: 4D9a4ZDxfKKPcwwKxj6Ei8TjhZoeW4q3ryTifs9cusTZ                                              │
+│ Status: Success                                                                                   │
+│ Executed Epoch: 10                                                                                │
+│                                                                                                   │
+│ Created Objects:                                                                                  │
+│  ┌──                                                                                              │
+│  │ ID: 0x0d8465e955278f12e240f6ed46544e12ddd5f98357d6ea02a1b37785ff84c906                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 9                                                                                     │
+│  │ Digest: CqffLKE84ypRjCv9TwPE3m3QVP8jV9UHxWRyUYfzpfgb                                           │
+│  └──                                                                                              │
+│ Mutated Objects:                                                                                  │
+│  ┌──                                                                                              │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 9                                                                                     │
+│  │ Digest: 7ooPPFYfd4ywYkVTxSPM617dGr7dNU1oTAPzZFuetuGG                                           │
+│  └──                                                                                              │
+│ Gas Object:                                                                                       │
+│  ┌──                                                                                              │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 9                                                                                     │
+│  │ Digest: 7ooPPFYfd4ywYkVTxSPM617dGr7dNU1oTAPzZFuetuGG                                           │
+│  └──                                                                                              │
+│ Gas Cost Summary:                                                                                 │
+│    Storage Cost: 2485200 MIST                                                                     │
+│    Computation Cost: 1000000 MIST                                                                 │
+│    Storage Rebate: 978120 MIST                                                                    │
+│    Non-refundable Storage Fee: 9880 MIST                                                          │
+│                                                                                                   │
+│ Transaction Dependencies:                                                                         │
+│    2zSX9dfsMUAAG8qYtGHy7scXM2d4jgEurohHrSUtYrGB                                                   │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────╮
+│ No transaction block events │
+╰─────────────────────────────╯
+
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Object Changes                                                                                                    │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Created Objects:                                                                                                  │
+│  ┌──                                                                                                              │
+│  │ ObjectID: 0x0d8465e955278f12e240f6ed46544e12ddd5f98357d6ea02a1b37785ff84c906                                   │
+│  │ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                                     │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )                  │
+│  │ ObjectType: 0x431b31b72639bff5109fcb23656f8891d4a98324eb146126d7d8526a7bc0c4dd::hello_world::HelloWorldObject  │
+│  │ Version: 9                                                                                                     │
+│  │ Digest: CqffLKE84ypRjCv9TwPE3m3QVP8jV9UHxWRyUYfzpfgb                                                           │
+│  └──                                                                                                              │
+│ Mutated Objects:                                                                                                  │
+│  ┌──                                                                                                              │
+│  │ ObjectID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                                   │
+│  │ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                                     │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )                  │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                                     │
+│  │ Version: 9                                                                                                     │
+│  │ Digest: 7ooPPFYfd4ywYkVTxSPM617dGr7dNU1oTAPzZFuetuGG                                                           │
+│  └──                                                                                                              │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Balance Changes                                                                                   │
+├───────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  ┌──                                                                                              │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ CoinType: 0x2::sui::SUI                                                                        │
+│  │ Amount: -2507080                                                                               │
+│  └──                                                                                              │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+</details>
+
+
+## Chạy test 
+
+Chúng ta cần thêm một số đoạn code ( bạn đừng lo đoạn code này , section tiếp theo mình giới thiệu chi tiết hơn) 
+
++ Thêm hàm `get_text()` vào module `hello_world`
+
+```rust
+
+// sources/hello_world.move
+
+public fun get_text(hello: &HelloWorldObject) : String {
+    hello.text
+
+}
+
+```
+
++ Thêm hàm `test_hello_world()` vào module `hello_world_tests`
+
+```rust
+// tests/hello_world_tests.move
+
+#[test_only]
+module hello_world::hello_world_tests;
+
+#[test]
+fun test_hello_world() {
+    use sui::test_scenario;
+    use sui::test_utils::assert_eq;
+    use hello_world::hello_world::{HelloWorldObject, hello_world};
+    use std::string;
+    let dummy_address = @0xCAFE;
+
+        // First transaction executed by initial owner to create the sword
+    let mut scenario = test_scenario::begin(dummy_address);
+        {
+            // Create hello world
+            hello_world( scenario.ctx());
+
+
+
+        };
+
+    scenario.next_tx(dummy_address);
+    {
+            let hello = scenario.take_from_sender<HelloWorldObject>();
+            let text = hello.get_text();
+            std::debug::print(&text);
+            assert_eq(text, string::utf8(b"Hello World!"));
+
+            scenario.return_to_sender(hello)
+    };
+
+    scenario.end();
+     
+}
+
+```
+
++ Chạy command để test smart contract
+
+
+```bash
+sui move test
+```
+
+
++ Kết quả 
+
+
+```bash
+INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCY MoveStdlib
+BUILDING hello_world
+Running Move unit tests
+[debug] "Hello World!"
+[ PASS    ] hello_world::hello_world_tests::test_hello_world
+Test result: OK. Total tests: 1; passed: 1; failed: 0
+```
+
 
 
 
