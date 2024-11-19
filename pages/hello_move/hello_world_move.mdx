@@ -1,0 +1,92 @@
+# Hello World Move Project 
+
+
+
+## Tạo project 
+
+Cú pháp: 
+
+```bash
+sui move new <project-name>
+```
+
+Ví dụ: 
+```bash
+sui move new hello_world
+```
+
+
+## Cấu trúc cơ bản của 1 project Move 
+
+```
+.
+├── Move.toml
+├── sources
+│   └── hello_world.move
+└── tests
+    └── hello_world_tests.move
+```
+
+1. **Move.toml**
+   - File cấu hình chính của project
+   - Chứa thông tin về tên project, dependencies, địa chỉ published
+   - Tương tự như package.json trong NodeJS hoặc Cargo.toml trong Rust
+
+2. **sources/**
+   - Thư mục chứa mã nguồn chính của project
+   - Các file `.move` chứa smart contract code
+   - Mỗi module Move được định nghĩa trong một file riêng
+
+3. **tests/**
+   - Thư mục chứa các file test
+   - Các file test thường có hậu tố `_tests.move`
+   - Dùng để viết unit test cho smart contract
+
+
+## Tạo 1 Hello World
+
+```rust
+// hello_world.move
+module hello_world::hello_world {
+
+    use std::string;
+
+    /// An object that contains an arbitrary string
+    public struct HelloWorldObject has key, store {
+        id: UID,
+        /// A string contained in the object
+        text: string::String
+    }
+
+    #[lint_allow(self_transfer)]
+    public entry fun hello_world(ctx: &mut TxContext) {
+        let object = HelloWorldObject {
+            id: object::new(ctx),
+            text: string::utf8(b"Hello World!")
+        };
+        transfer::public_transfer(object, tx_context::sender(ctx));
+    }
+
+}
+```
+
+## Build project
+
+```bash
+sui move build
+```
+
+Kết quả: 
+```
+UPDATING GIT DEPENDENCY https://github.com/MystenLabs/sui.git
+INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCY MoveStdlib
+BUILDING hello_world
+```
+
+
+
+
+
+
+

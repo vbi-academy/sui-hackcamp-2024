@@ -12,9 +12,10 @@ Ví dụ:
 
 
 
-## Thêm môi trường tương tác
+## Quản lý môi trường
 
-### Môi trường devnet
+### Thêm môi trường 
+#### 1. Môi trường devnet
 
 ```bash
 sui client new-env --alias=devnet --rpc https://fullnode.devnet.sui.io:443
@@ -24,7 +25,7 @@ Lưu ý:
 + Deployed every week on Mondays.
 
 
-### Môi trường testnet
+#### 2. Môi trường testnet
 
 ```bash
 sui client new-env --alias=testnet --rpc https://fullnode.testnet.sui.io:443
@@ -33,7 +34,7 @@ Lưu ý:
 + Deployed every week on Tuesdays.
 
 
-### Môi trường mainnet
+#### 3. Môi trường mainnet
 
 ```bash
 sui client new-env --alias=mainnet --rpc https://fullnode.mainnet.sui.io:443
@@ -42,7 +43,7 @@ Lưu ý:
 
 + Deployed every two weeks on Wednesdays.
 
-## Xem thông tin môi trường 
+### Xem thông tin môi trường 
 
 ```bash
 sui client envs
@@ -62,9 +63,7 @@ Kết quả:
 
 
 
-
-
-## Chọn môi trường muốn tương tác
+### Chọn môi trường muốn tương tác
 
 ```
 sui client switch --env <tên network mà bạn đã alias>
@@ -77,12 +76,50 @@ sui client switch --env devnet
 ```
 
 
-## Show address hiện tại bạn đang sử dụng 
+## Quản lý address 
+
+### Hiển thị address hiện tại
 
 ```bash
 sui client active-address                                                 
 >0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f
 ```
+
+### Hiển thị tất cả các address đang có 
+
+```bash
+sui client addresses
+```
+
+Kết quả:
+```
+╭───────────────────────┬────────────────────────────────────────────────────────────────────┬────────────────╮
+│ alias                 │ address                                                            │ active address │
+├───────────────────────┼────────────────────────────────────────────────────────────────────┼────────────────┤
+│ optimistic-avanturine │ 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f │ *              │
+╰───────────────────────┴────────────────────────────────────────────────────────────────────┴────────────────╯
+```
+
+### Thêm 1 address mới 
+
+```bash
+sui client new-address <scheme>
+```
+
+Ví dụ: 
+
+```bash
+sui client new-address ed25519
+╭────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Created new keypair and saved it to keystore.                                                  │
+├────────────────┬───────────────────────────────────────────────────────────────────────────────┤
+│ alias          │ elastic-prase                                                                 │
+│ address        │ 0xe50745f60f082fd64b29593c3ce20f1e942ee0b8312792ca06cd7a4873d5e50a            │
+│ keyScheme      │ ed25519                                                                       │
+│ recoveryPhrase │ deny proud resemble owner shift pole hotel tag curious gospel replace company │
+╰────────────────┴───────────────────────────────────────────────────────────────────────────────╯
+```
+
 
 
 ## Faucet coins cho address
@@ -92,7 +129,44 @@ sui client faucet
 >Request successful. It can take up to 1 minute to get the coin. Run sui client gas to check your gas coins.
 ```
 
-## Kiểm tra gas coins của bạn 
+## Lấy objects sở hữu bởi address
+```bash
+sui client objects <địa chỉ address>
+```
+
+Kết quả:
+```bash
+╭───────────────────────────────────────────────────────────────────────────────────────╮
+│ ╭────────────┬──────────────────────────────────────────────────────────────────────╮ │
+│ │ objectId   │  0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70  │ │
+│ │ version    │  7                                                                   │ │
+│ │ digest     │  TC2QoMLPHF5IlinAJa9pG1snW2AcVN2qIy+ZHko4Sxg=                        │ │
+│ │ objectType │  0x0000..0002::coin::Coin                                            │ │
+│ ╰────────────┴──────────────────────────────────────────────────────────────────────╯ │
+╰───────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+## Kiểm tra balance của bạn 
+### Cách 1: Sử dụng command `balance`
+
+```bash
+sui client balance
+```
+
+Kết quả:
+```bash
+╭────────────────────────────────────────╮
+│ Balance of coins owned by this address │
+├────────────────────────────────────────┤
+│ ╭─────────────────────────────────╮    │
+│ │ coin  balance (raw)  balance    │    │
+│ ├─────────────────────────────────┤    │
+│ │ Sui   1498002120     1.49 SUI   │    │
+│ ╰─────────────────────────────────╯    │
+╰────────────────────────────────────────╯
+```
+
+### Cách 2: Sử dụng command `gas`
 
 ```bash
 sui client gas
@@ -104,7 +178,8 @@ Kết quả:
 ╭────────────────────────────────────────────────────────────────────┬────────────────────┬──────────────────╮
 │ gasCoinId                                                          │ mistBalance (MIST) │ suiBalance (SUI) │
 ├────────────────────────────────────────────────────────────────────┼────────────────────┼──────────────────┤
-│ 0xae0107b20bcf8cc6ff015debbf4d4ba70e4d4a00996695b55116ba0579e1ffcf │ 1000000000         │ 1.00             │
+│ 0xa97a91fbff1ed74c2f95b5b0a75f30b62baf819c0079a46de7a21328411721a5 │ 1000000000         │ 1.00             │
+│ 0xae0107b20bcf8cc6ff015debbf4d4ba70e4d4a00996695b55116ba0579e1ffcf │ 498002120          │ 0.49             │
 ╰────────────────────────────────────────────────────────────────────┴────────────────────┴──────────────────╯
 ```
 
@@ -113,16 +188,147 @@ Kết quả:
 
 ## Transfer SUI coins to other address
 
-Lưu ý: 
+Cú pháp: 
 
 ```bash
-sui client pay-sui --recipients <address> --input-coins <gasCoinId> --amounts <amount>
+sui client transfer-sui --to <recipient> --sui-coin-object-id <object coins>  --amount <amount> --gas-budget 300000000
 ```
 
 Ví dụ: 
 ```bash
-sui client pay-sui --recipients 0x38a27343b6d4ca075e57ab1a5b7f6a50720d2a7fb106206ec1a9ebe54a273830 --input-coins 0xae0107b20bcf8cc6ff015debbf4d4ba70e4d4a00996695b55116ba0579e1ffcf --amounts 500000000
+sui client transfer-sui --to 0x38a27343b6d4ca075e57ab1a5b7f6a50720d2a7fb106206ec1a9ebe54a273830 --sui-coin-object-id 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70  --amount 500000000 --gas-budget 300000000
 ```
+
+
+<details>
+  <summary>Kết quả</summary>
+```bash
+Transaction Digest: V58JkCa5qyDaoRoUrsGjn8kaH6tLhrvbfDkQG7TczWt
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Data                                                                                             │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                                   │
+│ Gas Owner: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                                │
+│ Gas Budget: 300000000 MIST                                                                                   │
+│ Gas Price: 1000 MIST                                                                                         │
+│ Gas Payment:                                                                                                 │
+│  ┌──                                                                                                         │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                                    │
+│  │ Version: 6                                                                                                │
+│  │ Digest: HnGWATLcWW7UVFFQu49pPWSWJD7XkKn4MRvhRJksa4qc                                                      │
+│  └──                                                                                                         │
+│                                                                                                              │
+│ Transaction Kind: Programmable                                                                               │
+│ ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ Input Objects                                                                                            │ │
+│ ├──────────────────────────────────────────────────────────────────────────────────────────────────────────┤ │
+│ │ 0   Pure Arg: Type: address, Value: "0x38a27343b6d4ca075e57ab1a5b7f6a50720d2a7fb106206ec1a9ebe54a273830" │ │
+│ │ 1   Pure Arg: Type: u64, Value: "500000000"                                                              │ │
+│ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭──────────────────────╮                                                                                     │
+│ │ Commands             │                                                                                     │
+│ ├──────────────────────┤                                                                                     │
+│ │ 0  SplitCoins:       │                                                                                     │
+│ │  ┌                   │                                                                                     │
+│ │  │ Coin: GasCoin     │                                                                                     │
+│ │  │ Amounts:          │                                                                                     │
+│ │  │   Input  1        │                                                                                     │
+│ │  └                   │                                                                                     │
+│ │                      │                                                                                     │
+│ │ 1  TransferObjects:  │                                                                                     │
+│ │  ┌                   │                                                                                     │
+│ │  │ Arguments:        │                                                                                     │
+│ │  │   Result 0        │                                                                                     │
+│ │  │ Address: Input  0 │                                                                                     │
+│ │  └                   │                                                                                     │
+│ ╰──────────────────────╯                                                                                     │
+│                                                                                                              │
+│ Signatures:                                                                                                  │
+│    q9dcutYF41jsrdEtIscwwwldUJPJEPglUwnBGehee8YD04qh/Hb6ILJpoeqncdEuX4s3e9jaU9hMn2Y3/lZwCA==                  │
+│                                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Effects                                                                               │
+├───────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Digest: V58JkCa5qyDaoRoUrsGjn8kaH6tLhrvbfDkQG7TczWt                                               │
+│ Status: Success                                                                                   │
+│ Executed Epoch: 10                                                                                │
+│                                                                                                   │
+│ Created Objects:                                                                                  │
+│  ┌──                                                                                              │
+│  │ ID: 0xf9b1ec1c084f1be2eec946fb7817e0be3e8ce8ba370299a446428796b6776325                         │
+│  │ Owner: Account Address ( 0x38a27343b6d4ca075e57ab1a5b7f6a50720d2a7fb106206ec1a9ebe54a273830 )  │
+│  │ Version: 7                                                                                     │
+│  │ Digest: HivAV6FG3HdTz6yoEGHckLczDLghNHzyVps2MF6Jz16o                                           │
+│  └──                                                                                              │
+│ Mutated Objects:                                                                                  │
+│  ┌──                                                                                              │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 7                                                                                     │
+│  │ Digest: 68NHQhDagzFW3US6hxqwo5Kg948M7pgmq6akHU5aMXVR                                           │
+│  └──                                                                                              │
+│ Gas Object:                                                                                       │
+│  ┌──                                                                                              │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 7                                                                                     │
+│  │ Digest: 68NHQhDagzFW3US6hxqwo5Kg948M7pgmq6akHU5aMXVR                                           │
+│  └──                                                                                              │
+│ Gas Cost Summary:                                                                                 │
+│    Storage Cost: 1976000 MIST                                                                     │
+│    Computation Cost: 1000000 MIST                                                                 │
+│    Storage Rebate: 978120 MIST                                                                    │
+│    Non-refundable Storage Fee: 9880 MIST                                                          │
+│                                                                                                   │
+│ Transaction Dependencies:                                                                         │
+│    C1Uyy4Ku8NRSTgJqisGEwW78hFogHjy7q63eosMcXurk                                                   │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────╮
+│ No transaction block events │
+╰─────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Object Changes                                                                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Created Objects:                                                                                 │
+│  ┌──                                                                                             │
+│  │ ObjectID: 0xf9b1ec1c084f1be2eec946fb7817e0be3e8ce8ba370299a446428796b6776325                  │
+│  │ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                    │
+│  │ Owner: Account Address ( 0x38a27343b6d4ca075e57ab1a5b7f6a50720d2a7fb106206ec1a9ebe54a273830 ) │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                    │
+│  │ Version: 7                                                                                    │
+│  │ Digest: HivAV6FG3HdTz6yoEGHckLczDLghNHzyVps2MF6Jz16o                                          │
+│  └──                                                                                             │
+│ Mutated Objects:                                                                                 │
+│  ┌──                                                                                             │
+│  │ ObjectID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                  │
+│  │ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                    │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f ) │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                    │
+│  │ Version: 7                                                                                    │
+│  │ Digest: 68NHQhDagzFW3US6hxqwo5Kg948M7pgmq6akHU5aMXVR                                          │
+│  └──                                                                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Balance Changes                                                                                   │
+├───────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  ┌──                                                                                              │
+│  │ Owner: Account Address ( 0x38a27343b6d4ca075e57ab1a5b7f6a50720d2a7fb106206ec1a9ebe54a273830 )  │
+│  │ CoinType: 0x2::sui::SUI                                                                        │
+│  │ Amount: 500000000                                                                              │
+│  └──                                                                                              │
+│  ┌──                                                                                              │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ CoinType: 0x2::sui::SUI                                                                        │
+│  │ Amount: -501997880                                                                             │
+│  └──                                                                                              │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+</details>
+
+
+## 
 
 
 
