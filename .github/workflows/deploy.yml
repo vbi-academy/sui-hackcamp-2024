@@ -1,24 +1,26 @@
-name: Deploy CI
+name: Deploy to Vercel
+
 on:
   push:
     branches: [workflow]
-  pull_request:
-    types: [opened, synchronize, reopened]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v2
-      - name: Clear Cache
-        run: |
-          echo "Clearing cache..."
-          rm -rf ~/.npm ~/.cache
-      - name: Deploy to Vercel Action
-        uses: BetaHuhn/deploy-to-vercel-action@v1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          node-version: '16' # Hoặc phiên bản Node.js bạn cần
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel
+        env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel --prod --force --token $VERCEL_TOKEN
