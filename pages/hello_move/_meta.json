@@ -1,7 +1,10 @@
 {
     "move_environment" : "Setting up the Move environment",
+    "move_analyzer": "Setting up the Sui Move Analyzer(optional)",
     "sui_cli" : "Introduction to SUI CLI",
     "hello_world_move" : "Create the first hello move project"
-  }
+} 
+
+
 
   
