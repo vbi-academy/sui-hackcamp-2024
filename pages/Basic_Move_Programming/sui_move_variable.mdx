@@ -1,2 +1,84 @@
-# Các primitive types là gì ?
+# Move on basics
 
+Trước khi nói về các kiểu dữ liệu, hãy xem cách để khai báo và đặt tên biến trong Sui Move 
+
+Trong Sui move, ta dùng `let` để khai báo và khởi tạo các biến (varibales). Sau khi khai báo biến, bạn có thể dễ dàng access và chỉnh sửa lại. Có nhiều kiểu để khai báo và khởi tạo biến: 
+
+```rust
+let <Variable> : <Type> 
+let <Variable> = <Expression> 
+let <variable> : <Type> = <Expression> 
+``` 
+
+Đây là ví dụ: 
+
+
+```rust
+let hello;
+let hello_world : u8;
+let hello_sui_bootcamp = True;
+let hello_everyone : u8 = 20;
+
+```
+
+Tuy nhiên ngoài từ khoá `let` cho các giá trị immutable thì ta còn có `let mut` cho việc thay đổi dữ liệu 
+
+Ngoài ra, ta còn có từ hằng số (`const`) được dùng để tạo ra các giá trị không thể thay thế. Gọi là hằng số. Đây là ví dụ khi khởi tạo hằng số: 
+
+```
+const <Variable> : <Type> = <Expression>
+```
+
+Hằng số (Constants) có thể được định nghĩa bằng bất kỳ kiểu dữ liệu nào. Dưới đây là một số điểm quan trọng cần biết về hằng số:
+* Không thể thay đổi giá trị sau khi đã được định nghĩa
+* Hằng số không thể truy cập từ bên ngoài module của nó.
+
+```rust 
+
+module sui_bootcamp::constants {
+		
+	const MAX : u64 = 100;
+
+	public fun is_max(num: u64): bool {
+		num == MAX
+	}
+
+}
+```
+
+
+# Các kiểu dữ liệu (data types)
+
+Move có nhiều kiểu dữ liệu primitive. Bao gồm Booleans, Unsigned integers và address. 
+
+
+# Unsigned integer types
+
+
+
+
+
+# Boolean 
+
+Trong Sui move, Boolean hoạt động giống với các ngôn ngữ khác đều có 2 giá trị là true và false. Kiểu boolean thường được dùng cho các phần điều kiện ( control program flow). Ví dụ cho kiểu dữ liệu boolean: 
+
+```rust 
+let x: bool = true; 
+let mut y: bool = false; 
+```
+
+## What is variable shadowing?
+Trước khi giải thích về shadowing. Mình có một ví dụ sau đây trong function immute_fun có một giá trị không thể thay đổi là _x:
+
+```rust
+public fun immute_ fun() {
+    let _x: bool = true;
+    _x = false;
+}
+
+```
+
+Khi chạy lệnh `sui move build` bạn sẽ gặp lỗi sau: 
+
+
+![](../assets/Basic_Move_Programming_image/shadowning_example.png)
