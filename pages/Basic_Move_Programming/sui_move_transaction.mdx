@@ -1,0 +1,15 @@
+
+# Transaction trong Sui 
+Nội dung sẽ giới thiệu về các loại transactions trên sui và làm thế nào để được executed. 
+
+
+Transaction là  khái niệm cơ bản trong blockchain và là cách để tương tác với blockchain Sui. Transaction được sử dụng để thay đổi trạng thái (state) của blockchain thông qua việc tương tác với các đối tượng (objects). Trong move, Các transactions được sử dụng để gọi từ call các functions ở trong smart contract, khi publish một packages mới và khi upgrade package đã có sẵn. 
+
+
+
+
+
+Functions called directly through a transaction typically have an instance of TxContext as the last parameter. This is a special parameter set by the Sui Move VM and does not need to be specified by the user calling the function.
+
+
+## Cấu trúc của transactions 

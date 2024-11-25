@@ -1,0 +1,42 @@
+# What is address
+
+Address một định danh duy nhất trên blockchain. Nó được dùng để xác định các `package`, `account` và `object`. Địa chỉ sẽ có kích thước cố định 32 byte và được biểu diễn dưới dạng prefix là `0x`. 
+
+Ví dụ: 
+
+```bash
+0xe51ff5cd221a81c3d6e22b9e670ddf99004d71de4f769b0312b68c7c4872e2f1
+```
+
+Địa chỉ trên là địa chỉ valid vì nó có **64 ký tự (32 bytes)** và prefix là `0x`
+
+
+Sui cũng có các reserved addresses ( địa chỉ được dành riêng ) để định danh các package và object chuẩn. . Các địa chỉ  này thường là các giá trị đơn giản, dễ nhớ và dễ gõ. Ví dụ địa chỉ của standard library là 0x1. Các địa chỉ này được mặc định là đã padding các số 0 bên trái:
+
+```bash
+0x1 = 0x0000000000000000000000000000000000000000000000000000000000000001
+```
+
+Đây là một số ví dụ về reserved addresses:
+
+* 0x1 = Địa chỉ của [Standard library](https://move-book.com/move-basics/standard-library.html) - std
+* 0x2 = Địa chỉ của [Sui framework](https://move-book.com/programmability/sui-framework.html)
+* 0x3 = Địa chỉ của [Sui system](https://docs.sui.io/references/framework/sui-system/sui_system)
+* 0xb = Địa chỉ của [Bridge](https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/docs/bridge/bridge.md)
+* 0xdee9 = Địa chỉ của [Deepbook](https://github.com/MystenLabs/sui/tree/main/crates/sui-framework/docs/deepbook)
+* 0x403  = Địa chỉ của [DenyList object](https://docs.sui.io/standards/coin)
+
+
+
+> Trong những section tiếp theo bạn sẽ được tìm hiểu Address Type. Nội dung tiếp theo liên quan đến address là account
+
+
+# Account là gì trong Sui Blockchain? 
+
+Account( tài khoản) là nơi định danh của người dùng trên blockchain. Nó được tạo ra từ private key và được xác định bằng **address**. Một tài khoản có thể sỡ hữu các object và thực thi các transactions. Mỗi transaction đều có sender ( người gửi) 
+
+Sui hỗ trợ nhiều thuật toán cryptographic cho cơ chế tạo account. Hai đường cong hỗ trợ chính là ed25519 và secp256k1 và một cách đặc biệt khác là dùng zklogin - một trong những feature đặc biệt ở Sui. Để hiểu chi tiết về cơ chế account generation bạn có thể đọc các bài viết sau: 
+
+
+* Bài blog của sui về  [Cryptography](https://blog.sui.io/wallet-cryptography-specifications/) 
+* Bài documentation về [Key addresses](https://docs.sui.io/concepts/cryptography/transaction-auth/keys-addresses)

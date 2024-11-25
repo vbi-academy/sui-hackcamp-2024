@@ -125,19 +125,7 @@ a_move_package
 │   │   ...
 │   │   └──  <dep_pkg_name>
 │   │       └── *.mvsm
-Installing Sui Binaries Locally
-You can also install Sui binaries locally. Each Sui release provides a set of binaries for several operating systems.
-Pros:
-It's much faster compared to installing Sui using Cargo.
-It's easy to control versions
-Cons:
-Binaries can't be used globally unless you declare environment variables.
-Here's how to install Sui binaries locally:
-Download the desired version from the releases page.
-Extract the downloaded file using the command tar -xzvf <filename>.tgz
-Run the binary files using the command ./<binary_filename>
-To use the binary files globally, add the directory to your environment variables. Update the .bashrc file by adding the following line: export SUI_TESTNET_HOME="<absolute_path>/target/release"
-After saving the file, use the command source ~/.profile to save the changes.docker run --name suidevcontainer -itd mysten/sui-tools:testnet
+
 │   ...
 │   └── *.mvsm
 └── sources
@@ -157,9 +145,6 @@ After saving the file, use the command source ~/.profile to save the changes.doc
 ```
 
 
+Đoạn code package.move: https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/packages/sui-framework/sources/package.move
 
-
-
-[1] package.move: https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/packages/sui-framework/sources/package.move
-[2] 
 
