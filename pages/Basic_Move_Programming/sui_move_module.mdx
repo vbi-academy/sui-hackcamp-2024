@@ -1,1 +1,109 @@
-'
+
+Như vậy bạn đã hiểu về việc làm sao để set up Move trên Sui package và những components quan trọng trong Sui package. Trong nội dung tiếp theo, ta sẽ tìm hiểu về cấu trúc của một smart contract trong Sui Move. Điều gì làm nên sự khác biệt khi code Sui move? 
+
+# Modules trong Sui là gì ? 
+
+Ở Sui Move, khi khai báo một smart contract, ta sẽ sử dụng từ khoá `module`, giống với ở solidity ta sẽ có từ `contract`. Đây là syntax khi khai báo smart contract 
+
+```rust 
+
+module package_name::module::name { 
+    //module code ở đây 
+}
+
+```
+
+Trong đoạn code trên thì `package_name` và `module` đại diện cho một bên là tên của package mà bạn đã tạo. Ví dụ trong lệnh `sui move new hello_world` thì package name sẽ là `hello_world`. 
+
+Còn `module_name` sẽ là cái tên module mà bạn đã tạo trong package. Có thể có nhiều modules trong một package đó là lý do tại sao việc đề cập rõ ràng tên module là rất quan trọng. Tất cả các code của contract đều sẽ nằm ở trong `module` bao gồm cả các lệnh import. 
+
+
+Bạn có thể module tựa nhưa là một "toolbox" hay "resource library". Khi làm dự án, ta sẽ cần nhiều công cụ từ trong toolbox, hoặc trong move, ta sẽ cần nhiều tài nguyên ( resources) đã được cung cấp bởi các modules khác để viết smart contract.
+
+Mỗi module đều sẽ định nghĩa từ loại tài nghuyên khác nhau, sẽ có những kiểu dữ liệu là crypocurrencies (coin token) hoặc ownership types. Những `resources types` nó giống như các tool đa dạng trong toolbox như là búa, liềm, kéo... 
+
+Trong mỗi module sẽ cung cấp nhiều functions và các toán tử trong đó cho từng resource types, được dùng để create, modify, transfer hay destroy cái resource đó. Những function này giống như tác dụng của các tool, giải thích cho việc cần dùng đế nó. Tính chất đóng gói (encapsulation) của module  giúp cho việc phát triển smart contract trở nên module hóa, có khả năng kết hợp linh hoạt, đồng thời nâng cao khả năng tái sử dụng mã nguồn và tính bảo mật.
+
+
+
+
+## Từ khoá `use` - cách để import bất kỳ module 
+
+Trong Sui move, `use` được sử dụng để import bất kì module. Đây là cấu trúc của cách sử dụng `use`:
+
+
+```rust 
+use <Address/Alias>::<ModuleName>;
+```
+
+Giải thích về `<Address/Alias>` và `<ModuleName>` là: 
+* `<Address/Alias>` là những địa chỉ của module mà ta muốn dùng trong module. Để hiểu một cách đơn giản, chúng ta thể sử dụng alias được đặt trong Move.toml mà đã viết ở mục Package manifest 
+
+* `<ModuleName>` đơn giản đại diện cho tên của module đó. Ví dụ nếu ta muốn dùng `transfer` module  ở trong `sui` package. Ta có thể sử dụng lệnh sau: 
+
+```rust
+use sui::transfer;
+```
+
+Sau đây là một số Sui modules mà bạn sẽ thường sử dụng
+
+```rust
+
+# Module này giúp chúng ta xử lý liên quan đến string 
+use std::string;
+
+# Module này sẽ giúp khi ta cần các chức năng transfer object từ một account đến account khác 
+use sui::transfer; 
+
+
+# dòng dưới đây giúp cho việc tạo object trong module.
+use sui::object;
+
+# Đây là đoạn import từ sui framework. Giúp ta trong việc đinh nghĩa các thông tin của transaction như là địa chỉ của sender, địa chỉ người ký ...
+use sui::tx_context;
+
+```
+
+Bên cạnh việc import một module, Move cho phép bạn import cụ thể đối tượng từ module bao gồm functions và types. Điều này hữu ích khi bạn chỉ muốn một chức năng của module, Giảm việc không cần những đoạn code không cần thiết. Ví dụ:
+
+
+```rust
+
+// import function từ một module 
+use sui_bootcamp::module_one::learn; 
+
+// import từ Learner Type 
+use sui_bootcamp::module_one::Learner;
+
+```
+
+Không chỉ thế Move cho phép ta import nhiều từ module hoặc package bằng cách dùng dấu `{}`: 
+
+```rust 
+
+// import learn function và Learner type từ module one
+use sui_bootcamp::module_one::{learn, Learner};
+
+// import module và Learner type
+
+use sui_bootcamp::module_one::{Self, Learner};
+```
+
+> Làm sao để giải quyết vấn đề trùng tên? (Name conflict)
+
+Giả sử khi import nhiều modules, vấn đề trùng tên sẽ có thể diễn ra. Move cung cấp giải pháp này bằng cách dùng `as` để thay đổi tên của members. Đây là ví dụ: 
+
+
+```
+use sui_bootcamp::module_one::{Self as Learnmode, Learner as Lea};
+```
+
+
+
+Như vậy ta đã hiểu về `module` đóng vai trò như thế nào trong việc tạo Sui Move và `use` dùng để import các module khác bên ngoài. 
+
+
+
+
+# Module and Standard library imports
+The module importing feature is like building with blocks, where different elements can be freely combined to create various possibilities, rather than creating new elements from scratch.
