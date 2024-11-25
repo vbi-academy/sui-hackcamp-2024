@@ -1,0 +1,8 @@
+{
+  "sui_move_package" : "Sui move package",
+  "sui_move_address_accounts":"Addresses and Accounts",
+  "sui_move_transaction": "Transaction structure",
+  "sui_move_module": "Modules",
+  "sui_move_variable": "Sui move Variables",
+  "": ""
+}
