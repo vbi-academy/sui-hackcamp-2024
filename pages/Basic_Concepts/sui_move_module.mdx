@@ -7,22 +7,23 @@ Như vậy bạn đã hiểu về việc làm sao để set up Move trên Sui pa
 
 ```rust 
 
-module package_name::module::name { 
+module <package_name>::<module_name> { 
     //module code ở đây 
 }
 
 ```
++  `package_name` là tên của package mà bạn đã tạo. Ví dụ trong lệnh `sui move new hello_world` thì package name sẽ là `hello_world`. 
 
-Trong đoạn code trên thì `package_name` và `module` đại diện cho một bên là tên của package mà bạn đã tạo. Ví dụ trong lệnh `sui move new hello_world` thì package name sẽ là `hello_world`. 
-
-Còn `module_name` sẽ là cái tên module mà bạn đã tạo trong package. Có thể có nhiều modules trong một package đó là lý do tại sao việc đề cập rõ ràng tên module là rất quan trọng. Tất cả các code của contract đều sẽ nằm ở trong `module` bao gồm cả các lệnh import. 
++  `module_name` sẽ là cái tên module mà bạn đã tạo trong package. 
 
 
-Bạn có thể module tựa nhưa là một "toolbox" hay "resource library". Khi làm dự án, ta sẽ cần nhiều công cụ từ trong toolbox, hoặc trong move, ta sẽ cần nhiều tài nguyên ( resources) đã được cung cấp bởi các modules khác để viết smart contract.
 
-Mỗi module đều sẽ định nghĩa từ loại tài nghuyên khác nhau, sẽ có những kiểu dữ liệu là crypocurrencies (coin token) hoặc ownership types. Những `resources types` nó giống như các tool đa dạng trong toolbox như là búa, liềm, kéo... 
+Module: 
 
-Trong mỗi module sẽ cung cấp nhiều functions và các toán tử trong đó cho từng resource types, được dùng để create, modify, transfer hay destroy cái resource đó. Những function này giống như tác dụng của các tool, giải thích cho việc cần dùng đế nó. Tính chất đóng gói (encapsulation) của module  giúp cho việc phát triển smart contract trở nên module hóa, có khả năng kết hợp linh hoạt, đồng thời nâng cao khả năng tái sử dụng mã nguồn và tính bảo mật.
++ Bạn có thể xem `module` là thư viện con trong package. 
++ Có thể có nhiều modules trong một package đó là lý do tại sao việc đề cập rõ ràng tên module là rất quan trọng. Tất cả các code của contract đều sẽ nằm ở trong `module` bao gồm cả các lệnh import. 
+
++  Tính chất đóng gói (encapsulation) của module  giúp cho việc phát triển smart contract trở nên module hóa, có khả năng kết hợp linh hoạt, đồng thời nâng cao khả năng tái sử dụng mã nguồn và tính bảo mật.
 
 
 
@@ -37,13 +38,48 @@ use <Address/Alias>::<ModuleName>;
 ```
 
 Giải thích về `<Address/Alias>` và `<ModuleName>` là: 
-* `<Address/Alias>` là những địa chỉ của module mà ta muốn dùng trong module. Để hiểu một cách đơn giản, chúng ta thể sử dụng alias được đặt trong Move.toml mà đã viết ở mục Package manifest 
+* `<Address/Alias>` là những địa chỉ của package có chứa những module mà ta muốn dùng. Chúng ta thể sử dụng alias được đặt trong Move.toml mà đã viết ở mục Package manifest 
 
-* `<ModuleName>` đơn giản đại diện cho tên của module đó. Ví dụ nếu ta muốn dùng `transfer` module  ở trong `sui` package. Ta có thể sử dụng lệnh sau: 
+Ví dụ: 
 
 ```rust
-use sui::transfer;
+// Move.toml
+[package]
+name = "suilend"
+version = "0.0.1"
+published-at = "0x5b54b47971238403d6ade3c8c2cc75814cb55145a5184af916bb5b12aaf184cb"
+edition = "2024.beta"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "framework/mainnet"
+override = true
+ 
+[dependencies.Pyth]
+git = "https://github.com/solendprotocol/pyth-crosschain.git"
+subdir = "target_chains/sui/contracts"
+rev = "98e218c64bb75cf1350eb7b021e1ffcc3aedfd62"
+
+[dependencies.liquid_staking]
+git = "https://github.com/solendprotocol/liquid-staking.git"
+subdir = "contracts"
+rev = "main"
+
+[dependencies.sprungsui]
+local = "../sprungsui"
+
+[addresses]
+sui = "0x2"
+# suilend = "0x0"
+suilend = "0xf95b06141ed4a174f239417323bde3f209b972f5930d8521ea38a52aff3a6ddf"
 ```
+
+Link code: https://github.com/solendprotocol/suilend/blob/devel/contracts/suilend/Move.toml
+
+
+* `<ModuleName>` đơn giản đại diện cho tên của module đó.
+
 
 Sau đây là một số Sui modules mà bạn sẽ thường sử dụng
 
@@ -52,20 +88,25 @@ Sau đây là một số Sui modules mà bạn sẽ thường sử dụng
 # Module này giúp chúng ta xử lý liên quan đến string 
 use std::string;
 
+// https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/packages/move-stdlib/sources/string.move
+
 # Module này sẽ giúp khi ta cần các chức năng transfer object từ một account đến account khác 
 use sui::transfer; 
-
+// https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/packages/sui-framework/sources/transfer.move
 
 # dòng dưới đây giúp cho việc tạo object trong module.
 use sui::object;
+// https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/packages/sui-framework/sources/object.move
+
 
 # Đây là đoạn import từ sui framework. Giúp ta trong việc đinh nghĩa các thông tin của transaction như là địa chỉ của sender, địa chỉ người ký ...
 use sui::tx_context;
+// https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/packages/sui-framework/sources/tx_context.move
+
 
 ```
 
 Bên cạnh việc import một module, Move cho phép bạn import cụ thể đối tượng từ module bao gồm functions và types. Điều này hữu ích khi bạn chỉ muốn một chức năng của module, Giảm việc không cần những đoạn code không cần thiết. Ví dụ:
-
 
 ```rust
 
