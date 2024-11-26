@@ -53,8 +53,65 @@ Move có nhiều kiểu dữ liệu primitive. Bao gồm Booleans, Unsigned inte
 
 
 # Unsigned integer types
+Move hỗ trợ sáu kiểu số nguyên không dấu (u8, u16, u32, u64, u128, u256). Các kiểu này có giá trị từ 0 đến giá trị tối đa tương ứng, phụ thuộc vào kích thước của kiểu. Khác với Rust, Move không có số âm hoặc số thập phân.
 
 
+![](../assets/Basic_Move_Programming_image/unsigned_integer.png)
+
+
+Các số có thể được biểu diễn dưới dạng thập phân hoặc thập lục phân(Hex):
+```
+// Decimal representation
+let x: u8 = 10;
+
+// Hexadecimal representation
+let y: u8 = 0xa;
+
+```
+
+
+Nếu như kiểu dữ liệu không được xác định rõ. Thì compiler sẽ tự động xác định dựa trên ngữ cảnh. Nếu như kiểu vẫn không thể xác định được thì mặc định là `u64`. Nếu một giá trị số quá lớn so với phạm vi kích thước đã được chỉ định sẽ thông báo lỗi. 
+
+## Các phép tính trong Move
+
+Đối với các phép toán số học (cộng, trừ, nhân, chia, chia lấy dư) trên các kiểu dữ liệu này này, hai toán hạng phải cùng kiểu. Nếu bạn cần thực hiện phép toán trên các giá trị có kiểu khác nhau, bạn phải thực hiện **ép kiểu tường minh** (exclicit casting) trước. Lưu ý tất cả các phép toán số học sẽ dừng khi xảy ra tràn số hoặc chia cho không điều này để ngăn chặn các kiểu tấn công tràn số và tăng cường bảo mật cho chương trình.
+
+![](../assets/Basic_Move_Programming_image/arithmetic_operation.png)
+
+
+## Cách để ép kiểu trong Move( casting)
+
+Trong Move, sử dụng `as` cho việc ép kiểu dữ liệu, cho phép một số nguyên có kích thước này được chuyển đổi thành số nguyên có kích thước khác. Nếu kết quả quá lớn so với kiểu được chỉ định, việc ép kiểu sẽ bị dừng lại (ví dụ: ép kiểu một giá trị u16 thành u8 có thể gây tràn số).
+
+
+![](../assets/Basic_Move_Programming_image/casting_types.png)
+
+Kiểu dữ liệu Integers là kiểu duy nhất trong Move hỗ trợ cho việc ép kiểu(casting). Ví dụ dưới đây ta có thể đổi y sang u64 cho phép tính toán với giá trị z: 
+
+```rust 
+
+public fun casting_function() {
+    let x: u8 = 94; 
+
+    // 
+    let y: u64 = x as u64;
+
+    let _z = 98u64 + y; 
+
+}
+
+```
+
+Đây là một số ví dụ khác về việc casting: 
+
+```rust
+(x as u8)
+(y as u16)
+(87316 as u32)
+(2u8 as u64)
+(1 + 3 as u128)
+(4/2 + 12345 as u256)
+```
 
 
 
@@ -67,11 +124,75 @@ let x: bool = true;
 let mut y: bool = false; 
 ```
 
+Kiểu Boolean hỗ trợ cho các toán tử logic: 
+
+* Toán tử && (`AND`),`p && q` sẽ tương đương với `if(p) q else false`, nghĩa là nó chỉ true khi cả 2 đều true
+* Toán tử || (`OR`), `p || q` sẽ tương đương với `if(p) true else q`, nghĩa là một trong hai đó là true thì sẽ true.
+* Toán tử ! (`NOT`), `!p` sẽ tương đương với `if (p) false else true`, nghĩa là phủ định
+
+
+
+import React, { useState } from 'react';
+
+export const LogicalOperatorQuiz = () => {
+  const [selected, setSelected] = useState(null);
+  const [isCorrect, setIsCorrect] = useState(false);
+
+  const handleSelect = (operator) => {
+    setSelected(operator);
+    setIsCorrect(operator === '&&');
+  };
+
+  return (
+    <div className="p-4 bg-white dark:bg-gray-800 shadow-md rounded-md">
+      <p className="text-lg font-semibold mb-4 text-black dark:text-white">
+        Trong logic lập trình, nếu tất cả các điều kiện đều phải được thỏa mãn thì nên sử dụng toán tử logic nào?
+      </p>
+      <div className="flex space-x-4">
+        <button
+          onClick={() => handleSelect('&&')}
+          className={`px-4 bg-white py-2 rounded-md transition-colors duration-200 text-white ${
+            selected === '&&' ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
+          }`}
+        >
+          &&
+        </button>
+        <button
+          onClick={() => handleSelect('||')}
+          className={`px-4 py-2 rounded-md transition-colors duration-200 text-white ${
+            selected === '||' ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
+          }`}
+        >
+          ||
+        </button>
+        <button
+          onClick={() => handleSelect('!!')}
+          className={`px-4 py-2 rounded-md transition-colors duration-200 text-white ${
+            selected === '!!' ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
+          }`}
+        >
+          !!
+        </button>
+      </div>
+      {selected && (
+        <p className={`mt-4 text-sm ${isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          {isCorrect ? 'Correct!' : 'Try again!'}
+        </p>
+      )}
+    </div>
+  );
+};
+
+Để hiểu thêm thì bạn có thể trả lời bài quiz sau: 
+
+<LogicalOperatorQuiz />
+
+
 ## What is variable shadowing?
 Trước khi giải thích về shadowing. Mình có một ví dụ sau đây trong function immute_fun có một giá trị không thể thay đổi là _x:
 
 ```rust
-public fun immute_ fun() {
+public fun immute_fun() {
     let _x: bool = true;
     _x = false;
 }
@@ -80,5 +201,19 @@ public fun immute_ fun() {
 
 Khi chạy lệnh `sui move build` bạn sẽ gặp lỗi sau: 
 
-
 ![](../assets/Basic_Move_Programming_image/shadowning_example.png)
+
+Lỗi này cho thấy bạn không thể thay đổi giá trị của _x được vì đó là giá trị immutable. Như vậy bạn cần khai báo lại giá trị thành mutable mut_X 
+
+
+```rust 
+public fun mute_fun(){
+    let mut _x: bool = true;
+    _x = false;
+}
+
+```
+
+
+Variable shadowing xảy ra khi mà một biến mới trùng têm được khai báo cùng tên. Tại thời điểm này, có hai biến tồn tại trong chương trình. Do đều nằm trong một phạm vi (scope) 
+
