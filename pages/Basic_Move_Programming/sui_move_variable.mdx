@@ -219,7 +219,7 @@ Variable shadowing xảy ra khi mà một biến mới trùng têm được khai
 
 
 
-## Kiểu dữ liệu Address 
+## Address 
 
 Trong Move, địa chỉ (Address) là một kiểu dữ liệu cơ bản được tích hợp sẵn, dùng để biểu thị tài khoản trên blockchain. Giá trị của một address là  định danh 256-bit (32-byte), thường được biểu diễn dưới dạng chuỗi hex với tiền tố( prefix) là `0x`.
 
@@ -343,7 +343,7 @@ sui_bootcamp = "0x1"`}
   );
 };
 
----
+
 
 
 Sui framework cung cấp nhiều helper functions để xử lý address. Bởi vì kiểu dữ liệu address là 32-byte. Nó cần convert sang u256. ADdress cũng . cótheer convert sang vector để lưu trữ:
@@ -354,13 +354,6 @@ Sui framework cung cấp nhiều helper functions để xử lý address. Bởi 
 Đây là kết quả sau khi chạy lệnh `sui move test`
 
 ![](../assets/Basic_Move_Programming_image/sui_move_test.png)
-
-
-
-
-## Strings
-
-
 
 
 ## Vector type 
@@ -407,7 +400,7 @@ v::push_back(&mut v, 6);
 ```
 
 ![](../assets/Basic_Move_Programming_image/AI_test_move.png)
----
+
 Để đọc value từ vector, dùng `borrow` function: 
 
 ```rust 
@@ -429,7 +422,7 @@ let x = *vector::borrow(&v, 2);
 debug::print(&x)
 ```
 
----
+
 Để chỉnh sửa giá trị của vector, ta có thể sử dụng `borrow_mut` function:
 ```rust 
   let mut v = vector[1,2,3,4];
@@ -442,8 +435,6 @@ debug::print(&x)
 Kết quả: 
 ![](../assets/Basic_Move_Programming_image/modify_vector.png)
 
-
----
 Để xoá phần tử trong vector, ta có thể sử dụng `vector::pop_back` function: 
 
 ```rust 
@@ -456,7 +447,7 @@ Kết quả:
 Kết quả: 
 ![](../assets/Basic_Move_Programming_image/pop_back_vector.png)
 
----
+
 Bạn cũng có thể xóa một phần tử cụ thể từ vector bằng cách sử dụng các hàm `index_of` và `swap_remove`:
 
 ```rust 
@@ -475,9 +466,10 @@ debug::print(&v);
 ```
 
 Kết quả: 
-![](../assets/Basic_Move_Programming_image/swap_remove_vector.png)
----
 
+![](../assets/Basic_Move_Programming_image/swap_remove_vector.png)
+
+ 
 Bạn cũng có thể đảo ngược vector bằng cách sử dụng `vector::reverse` và gộp mảng với `vector::append`:
 
 ```rust 
@@ -492,7 +484,7 @@ debug::print(&v1);
 
 ![](../assets/Basic_Move_Programming_image/sui_append_move.png)
 
----
+
 
 Vector trong Vector (Nested Vector)
 
@@ -503,8 +495,7 @@ let vv: vector<vector<u8>> = vector[vector[10, 20], vector[30, 40]];
 
 > Note: Mặc dù `Vector` có thể được lưu trữ bất kì dữ liệu nhưng nó chỉ chứa các giá trị có kiểu dữ liệu giống nhau. Ví dụ với `vector<u8>` thì nó chỉ chứa các giá trị kiểu u8. Và `vector<bool>` chứa các phần tử kiểu bool.  
 
-
-### Các hàm trong Vector module
+Các hàm trong Vector module
 
 Thử viện tiêu chuẩn của Move cung cấp nhiều hàm có thể sử dụng với vector.
 
@@ -521,3 +512,80 @@ Thử viện tiêu chuẩn của Move cung cấp nhiều hàm có thể sử d�
 ```
 
 Đọc chi tiết ở đây: [Vector module](https://move-book.com/reference/primitive-types/vector.html)
+
+## Strings
+Ngôn ngữ Move không hỗ trợ trực tiếp `String` nhưng ta có thể sử dụng `String` module trong thư viện để xử lý string data. Trong thư viện có `std::string` và `std::ascii` modules để định nghĩa các loại string cung cấp các methods cho việc tạo, chỉnh sửa và xử lý string. 
+
+```rust
+
+let hello = string::utf8(b"Hello, world!");
+```
+
+Cách để tạo string bằng việc chuyển đổi từ ASCII strings bằng cách dùng `from_ascii` function: 
+
+```rust
+let ascii_string = string::from_ascii(b"Hello, world!");
+let utf8_string = string::from_ascii(ascii_string);
+
+```
+
+Move hỗ trợ các functions cho string: 
+* `append`: Nối 2 chuỗi 
+* `append_utf8`: Nối chuỗi UTF-8
+* `insert`: Chèn chuỗi vào vị trí i 
+* `sub_string`: Trả về chuỗi con từ vị trí i đến j
+* `index_of`: Trả về vị trí của phần tử e trong chuỗi
+* `utf8`: Chuyển đổi chuỗi sang UTF-8
+* `is_empty`: Kiểm tra chuỗi có rỗng hay không
+* `length`: Trả về độ dài chuỗi
+
+
+Bất kể loại chuỗi nào được sử dụng, cách thức hoạt động bên trong của chúng đều dựa trên mảng byte (`vector<u8>`). Lấy ví dụ:
+
+```rust
+module std::ascii {
+    use std::option::{Self, Option};
+
+    /// This struct stores the underlying byte array
+    public struct String has copy, drop, store {
+        bytes: vector<u8>,
+    }
+
+    /// Converts an ASCII byte array to a string
+    public fun string(bytes: vector<u8>): String {
+       let x = try_string(bytes);
+       assert!(x.is_some(), EINVALID_ASCII_CHARACTER);
+       x.destroy_some()
+    }
+
+    /// Validates each byte to ensure it is a valid ASCII character
+    public fun try_string(bytes: vector<u8>): Option<String> {
+        let len = bytes.length();
+        let mut i = 0;
+        while (i < len) {
+            let possible_byte = bytes[i];
+            if (!is_valid_char(possible_byte)) return option::none();
+            i = i + 1;
+        };
+        option::some(String { bytes })
+    }
+
+    /// The valid ASCII range here is 0-122
+    public fun is_valid_char(b: u8): bool {
+       b <= 0x7F
+    }
+
+```
+
+Nó sử dụng struct `String` để lưu trữ chuỗi, về bản chất vẫn là một mảng byte kiểu u8. Khi gọi hàm `ascii::string` để chuyển đổi mảng byte thành chuỗi, hệ thống sẽ thực thi hàm `try_string` để xác thực từng byte, đảm bảo đó là ký tự ASCII hợp lệ. 
+
+
+Giới hạn này chỉ cho phép 122 ký tự có thể in được đầu tiên. Sau khi xác thực thành công, hệ thống trả về `option::some` và giải nén chuỗi thông qua hàm option::destroy_some. Trong trường hợp thất bại, nó sẽ hủy thực thi và trả về option::none().
+
+
+
+
+## Struct (Update soon)
+
+
+## Option Type(Update soon)

@@ -1,0 +1,57 @@
+
+# Control flow trong sui move hoạt động như thế nào ? 
+
+Trong trang này, bạn sẽ tìm hiểu về các điều kiện if-else và làm sao để làm việc với các vòng lặp trong sui move. 
+
+> Move trên Sui tránh sử dụng vòng lặp for-while bởi vì có thể dẫn đến  tình trạng không kết thúc hoặc thực thi vô hạn, , điều này đi ngược lại với mục tiêu của ngôn ngữ là đảm bảo tính xác định và dự đoán được. Tuy nhiên logic lặp lại sẽ được thực hiện thông qua đệ quy (recursion) và pattern matching. 
+
+
+## Câu điều kiện if-else 
+
+Câu điền kiện if-else cho phép bạn chạy một đoạn code block dựa trên điều kiện mà bạn xác định là đúng(true) hay sai(false). Nếu điều kiện sai thì sẽ chuyễn đoạn block khác. Cú pháp của if-else như sau: 
+```rust
+if (<bool_expression>) {
+	<expression> 
+} else {
+	<expression>
+};
+```
+
+
+Cùng xem ví dụ dưới đây, nếu `a` là true thì `b` sẽ lấy giá trị 10, ngược lại thì `b` sẽ lấy giá trị 20. 
+
+```
+module sui_bootcamp::example_if {
+	use sui::object::UID;
+	use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+
+	// Declaring the ExampleObject
+	public struct ExampleObject has key, store {
+		id: UID,
+		num: u8,
+	}
+
+	// Initializing the constructor
+	fun init(ctx: &mut TxContext) {
+
+		// Try switching to false
+		let a = true;
+
+		let b = if (a) {
+			10
+		} else {
+			20
+		};
+		
+		let obj = ExampleObject{
+			id: object::new(ctx),
+			num: b,
+		};
+
+        transfer::public_transfer(obj, ctx.sender());
+	}
+}
+
+
+```
