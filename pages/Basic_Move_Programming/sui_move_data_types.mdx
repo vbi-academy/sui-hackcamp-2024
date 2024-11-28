@@ -47,7 +47,7 @@ module sui_bootcamp::constants {
 ```
 
 
-# Các kiểu dữ liệu (data types)
+# Các kiểu dữ liệu (data types) Primitive
 
 Move có nhiều kiểu dữ liệu primitive. Bao gồm Booleans, Unsigned integers và address. 
 
@@ -360,7 +360,7 @@ Sui framework cung cấp nhiều helper functions để xử lý address. Bởi 
 
 Vector là data structure hoạt động giống mảng trong Sui Move. Để sử dụng vector, bạn cần import thư viện `std::vector` và dùng `let` để khai báo. Cấu trúc của vector là `vector<T>`. Trong đó T là kiểu dữ liệu của các phần tử trong vector, nó là generic type. 
 
-Vector trong Sui move khá tương đồng với `Vec` trong Rust và `ArrayList` trong java. Trong Vector module sẽ có nhiều functions giúp create, access và tính toán vector. Các native functions đó được viết bằng rust và được gọi thông qua Sui Move VM
+Vector trong Sui move khá tương đồng với `Vec` trong Rust và `ArrayList` trong java. Trong Vector module sẽ có nhiều functions giúp create, access và tính toán vector. Các native functions đó được viết bằng rust và được gọi thông qua Sui Move VM.
 
 Đây là ví dụ: 
 ```rust 
@@ -516,7 +516,11 @@ Thử viện tiêu chuẩn của Move cung cấp nhiều hàm có thể sử d�
 ## Strings
 Ngôn ngữ Move không hỗ trợ trực tiếp `String` nhưng ta có thể sử dụng `String` module trong thư viện để xử lý string data. Trong thư viện có `std::string` và `std::ascii` modules để định nghĩa các loại string cung cấp các methods cho việc tạo, chỉnh sửa và xử lý string. 
 
+Để sử dụng kiểu dữ liệu `String`, bạn cần import nó từ module: `std::string`
+
+
 ```rust
+use std::string::{Self, String};
 
 let hello = string::utf8(b"Hello, world!");
 ```
@@ -584,8 +588,10 @@ Giới hạn này chỉ cho phép 122 ký tự có thể in được đầu tiê
 
 
 
-
-## Struct (Update soon)
-
-
 ## Option Type(Update soon)
+
+Option là một kiểu dữ liệu dùng để represent một cái giá trị có thể hoặc không cần tồn tại. Khái niệm từ Option mượn từ ngôn ngữ rust. Bạn có thể học qua khoá học rust bootcamp để hiểu về type này nha
+
+
+
+

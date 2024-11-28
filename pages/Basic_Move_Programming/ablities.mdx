@@ -1,0 +1,18 @@
+
+# Custom Types và  Abilities
+
+Trong trang này, bạn sẽ tìm hiểu chi tiết về các abilities trong Sui. Mỗi abilities đều sẽ có những chức năng khác nhau: 
+
+
+## Vậy chính xác thì Abilities là gì? 
+
+Trong lập trình Move, ablities giống như những quy tắc đặc biệt giúp bạn quyết định bạn sẽ làm gì với các thông tin dữ liệu như là cấp quyền(permisions) bất kì cho tài liệu đó như được chia sẻ hay edit nó.
+
+
+Đây là ví dụ là của kiểu abilities - định nghĩa một object có thể làm và có thể là: 
+```
+struct OwnerCap has key, store {
+    id: UID
+}
+```
+
