@@ -1,0 +1,51 @@
+
+# Events là gì? 
+
+Envent là cách để module có thể tương tác với frontend qua blockchain, một thuật ngữ gọi là "listenning" cho các events và biết các action ở smart contract đang diễn ra. Nếu không có event thì sẽ rất khó để bạn có thể monitor khi mà có một object được tạo ra, được cập nhập... Event có thể query kết quả của các objects đã thay đổi như thế nào: 
+
+Mình có ví dụ tạo một ticket cho anh trai say hi 
+
+```rust
+
+module sui_bootcamp::anhtraisayhi {
+
+    use sui::object::{Self, ID, UID};
+    use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::event;
+
+
+    public struct AnhtraisayhiTicket has key {
+        id: UID,
+
+    }
+
+    // struct ticket 
+    public struct TicketEvent has copy, drop{
+        id: ID
+    }
+
+
+    // create ticket 
+    public fun CreateTicket(ctx: &mut TxContext){
+
+        let uid = object::new(ctx);
+        let id = object::uid_to_inner(&uid);
+
+        let ticket = AnhtraisayhiTicket {
+            id: uid
+        };
+
+       
+
+        transfer::transfer(ticket, tx_context::sender(ctx));
+        event::emit(TicketEvent {
+         id,
+     });
+   
+    }
+
+}
+```
+
+Sử dụng lệnh `event::emit` để phát event, ta cần dùng `object::uid_to_inner` để convert từ UID type sang ID type.
