@@ -1,5 +1,10 @@
 {
-  "sui_move_variable": "Sui move Variables",
-  "": ""
+  "sui_move_data_types": "Sui move data types",
+  "control_flow": "Control flow trong sui move hoạt động như thế nào ? ",
+  "function": "Function trong sui move hoạt động như thế nào ? ",
+  "struct": "Khái niệm về struct",
+  "ablities": "ablities",
+  "events_and_errors": "events và errors",
+  "unit_tests": "Viết testcase cho Sui move"
 }
   
