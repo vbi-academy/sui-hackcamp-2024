@@ -3,43 +3,47 @@
 Nội dung sẽ giới thiệu về các loại transactions trên sui và làm thế nào để được executed. 
 
 
-Transaction là  khái niệm cơ bản trong blockchain và là cách để tương tác với blockchain Sui. Transaction được sử dụng để thay đổi trạng thái (state) của blockchain thông qua việc tương tác với các đối tượng (objects). Trong move, Các transactions được sử dụng để gọi từ call các functions ở trong smart contract, khi publish một packages mới và khi upgrade package đã có sẵn. 
++ Transaction là  khái niệm cơ bản trong blockchain, dùng để tương tác với blockchain Sui. 
++ Transaction được sử dụng để thay đổi trạng thái (state) của blockchain thông qua việc tương tác với các đối tượng (objects). 
++ Trong move, Các transactions được sử dụng để gọi từ call các functions ở trong smart contract, khi publish một packages mới và khi upgrade package đã có sẵn. 
 
 
 
 
 
-Functions called directly through a transaction typically have an instance of TxContext as the last parameter. This is a special parameter set by the Sui Move VM and does not need to be specified by the user calling the function.
+## Các loại Transaction 
+Trên Sui, các data được update thông qua transactions. Sui hỗ trợ 2 loại transaction là: 
 
+### Programmable transaction blocks (PTB)
+Bất kì ai cũng có thể gửi các giao dịch này đến mạng. PTBs chứa nhiều commands khác nhau để cùng thực thi ra được outcome của transaction. Bạn có thể call nhiều move functions, quản lý objects và tokens trong một transaction mà không cần phải publish một move package mới. Điều này cho phép user gom lại nhiều lệnh tính toán một lần. Điều này giúp ích lớn cho việc giảm chi phí và tăng thông lượng mạng.
 
-# Các loại Transaction 
-Trên Sui, Các data được update thông qua transactions. Sui hỗ trợ 2 loại transaction là: 
-
-1. Programmable transaction blocks (PTB): Bất kì ai cũng có thể gửi các giao dịch này đến mạng. PTBs chứa nhiều commands khác nhau để cùng thực thi ra được outcome của transaction. Bạn có thể call nhiều move functions, quản lý objects và tokens trong một transaction mà không cần phải publish một move package mới. Điều này cho phép user gom lại nhiều lệnh tính toán một lần. Điều này giúp ích lớn cho việc giảm chi phí và tăng thông lượng mạng.
-
-2. System Transactions: Chỉ những người là validator nodes có thể submit những transaction này. Họ chịu trách nghiệm trong việc maintain mạng ban gồm init checkpoint, thay đổi epoch...
+### System Transactions
+Chỉ những người là validator nodes có thể submit những transaction này. Họ chịu trách nghiệm trong việc maintain mạng bao gồm init checkpoint, thay đổi epoch...
 
 
 ## Cấu trúc của transaction 
 
 Toàn bộ Sui transactions đều sẽ có chi tiết những metadata sau:
-
-* Sender address: Địa chỉ của người gửi transaction 
-* Gas input: Tham chiếu đến đối tượng sẽ được sử dụng để thanh toán phần phí thực thi và lưu trữ của giao dịch này. 
-* Max gas budget: Số đơn vị gas tối đa sẽ được sử dụng để thanh toán transaction này 
-* Epoch: Mục tiêu Sui epoch cho giao dịch 
-* Type: Loại lệnh call, publish hay giao dịch cùng với dữ liệu cụ thể. 
+* Transaction Type: Loại transaction trên SUI 
+* Digest : Mã hash của transaction 
+* Checkpoint : Tương tự khái niệm blocks trên một số blockchain khác 
+* Timestamp: Thời gian transaction executed 
+* Sender: Địa chỉ của người gửi transaction 
+* Total Gas Fee: Phí gas tổng cộng để thực thi transaction này 
+* Gas budget: Số đơn vị gas tối đa sẽ được sử dụng để thanh toán transaction này 
+* Gas Payment Object: Gas Object Id nào được sử dụng để charge phí 
+* Gas Object Owner: Address sở hữu gas Object 
 * Authenticator: Cryptographic signature và public key.
-* Expiration Time: Thời hạn mà sau đó các validator sẽ không coi đây là valid transaction
+* User Signature: Signature của user khi thực hiện transaction 
 
 
 ## Ví dụ về transaction flow 
 
-Dưới đấy là một ví dụ về transaction flow 
+Dưới đây là một ví dụ về transaction flow 
 
 Giả sử chúng ta có 2 object: 
-Object A: là Sui token có balance là 5 Sui do account tên Tom sỡ hữu 
-Object B: Chứa 2 Sui do John sỡ hữu 
++ `Object A`: là Sui token có balance là 5 Sui do account tên Tom sỡ hữu 
++ `Object B`: Chứa 2 Sui do John sỡ hữu 
 
 ![](../assets/Basic_Move_Programming_image/transaction_flow_example.png)
 
@@ -47,7 +51,7 @@ Theo ví dụ trên thì Tom gửi 1 Sui sang Alice. Object A chính là input c
 * Object changed là object A giờ chỉ còn 4 SUI token 
 * Object mới được tạo ra là Object C chứa 1 Sui sỡ hữu bởi Alice 
 
-Cùng lúc đó, John quyết định gửi 2 Sui token sang Alice.  Do hai giao dịch này tương tác với các đối tượng khác nhau, chúng có thể được thực thi song song. Sau khi nhận 2 Sui, Anna quyết định gửi lại cho Tom. Giờ thì Tom đã có 2 tokens. 
+Cùng lúc đó, John quyết định gửi 2 Sui token sang Anna.  Do hai giao dịch này tương tác với các đối tượng khác nhau, chúng có thể được thực thi song song. Sau khi nhận 2 Sui, Anna quyết định gửi lại cho Tom. Giờ thì Tom đã có 2 tokens. 
 
 Cuối cùng thì Tom  gửi toàn bộ Sui token cho John. Input của transaction này là Object A 
 
@@ -69,9 +73,9 @@ Sui transactions sẽ chứa nhiều commands. Mỗi command có thể là publi
 ![](../assets/Basic_Move_Programming_image/transaction_commands.png)
 
 Trong hình trên, ta có sender là `0xa11ce` thực thi các commands sau: 
-* Splitcoins - split một coin từ object đã có sẵn, trong trường hợp này là `gas` object. 
-* Movecall - Lệnh call function purchase trong package 0xAAA, module `market` với tham số là `payment` objecty
-* Transferobjects - Lệnh transfer object sang địa chỉ khác 
+* `SplitCoins` - split một coin từ object đã có sẵn, trong trường hợp này là `gas` object. 
+* `MoveCall` - Lệnh call function purchase trong package `0xAAA`, module `market` với tham số là `payment` objecty
+* `TransferObjects` - Lệnh transfer object sang địa chỉ khác 
 
 
 
@@ -83,7 +87,7 @@ Sau khi call thành công, ta sẽ có `Transaction Effects` thể hiện sự t
 
 ![](../assets/Basic_Move_Programming_image/transaction_results.png)
 
-Output của transaction bao gồm nhiều phần như: 
+Output của transaction bao gồm: 
 * Transaction digest: Mã hash của transaction
 * Transaction data: Thông tin inputs, commands và gas object được dùng trong transaction. 
 * Transaction Effect: Trạng thái  và những ảnh hưởng của transactions 
@@ -91,6 +95,141 @@ Output của transaction bao gồm nhiều phần như:
 * Object changes: Các thay đổi của các objects, bao gồm cả tính ownership 
 * Balance changes: Những thay đổi đến balances của account trong transaction 
 
+
+<details>
+  <summary>Ví dụ output của 1 transaction</summary>
+```bash
+Transaction Digest: 2zSX9dfsMUAAG8qYtGHy7scXM2d4jgEurohHrSUtYrGB
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Data                                                                                             │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                                   │
+│ Gas Owner: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                                │
+│ Gas Budget: 100000000 MIST                                                                                   │
+│ Gas Price: 1000 MIST                                                                                         │
+│ Gas Payment:                                                                                                 │
+│  ┌──                                                                                                         │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                                    │
+│  │ Version: 7                                                                                                │
+│  │ Digest: 68NHQhDagzFW3US6hxqwo5Kg948M7pgmq6akHU5aMXVR                                                      │
+│  └──                                                                                                         │
+│                                                                                                              │
+│ Transaction Kind: Programmable                                                                               │
+│ ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ Input Objects                                                                                            │ │
+│ ├──────────────────────────────────────────────────────────────────────────────────────────────────────────┤ │
+│ │ 0   Pure Arg: Type: address, Value: "0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f" │ │
+│ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─────────────────────────────────────────────────────────────────────────╮                                  │
+│ │ Commands                                                                │                                  │
+│ ├─────────────────────────────────────────────────────────────────────────┤                                  │
+│ │ 0  Publish:                                                             │                                  │
+│ │  ┌                                                                      │                                  │
+│ │  │ Dependencies:                                                        │                                  │
+│ │  │   0x0000000000000000000000000000000000000000000000000000000000000001 │                                  │
+│ │  │   0x0000000000000000000000000000000000000000000000000000000000000002 │                                  │
+│ │  └                                                                      │                                  │
+│ │                                                                         │                                  │
+│ │ 1  TransferObjects:                                                     │                                  │
+│ │  ┌                                                                      │                                  │
+│ │  │ Arguments:                                                           │                                  │
+│ │  │   Result 0                                                           │                                  │
+│ │  │ Address: Input  0                                                    │                                  │
+│ │  └                                                                      │                                  │
+│ ╰─────────────────────────────────────────────────────────────────────────╯                                  │
+│                                                                                                              │
+│ Signatures:                                                                                                  │
+│    h2foMg640sscAuasItZSOGtBy0GXMouFgvBQwjUK0X0ERJv4YhS2a0tSoVguI50lWOUmd58kKApa4CQ8x72WCw==                  │
+│                                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Effects                                                                               │
+├───────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Digest: 2zSX9dfsMUAAG8qYtGHy7scXM2d4jgEurohHrSUtYrGB                                              │
+│ Status: Success                                                                                   │
+│ Executed Epoch: 10                                                                                │
+│                                                                                                   │
+│ Created Objects:                                                                                  │
+│  ┌──                                                                                              │
+│  │ ID: 0x431b31b72639bff5109fcb23656f8891d4a98324eb146126d7d8526a7bc0c4dd                         │
+│  │ Owner: Immutable                                                                               │
+│  │ Version: 1                                                                                     │
+│  │ Digest: 6zsDSiib5Yk2vAeGhLapFiKTUpHGicPoe8xPrasVghM                                            │
+│  └──                                                                                              │
+│  ┌──                                                                                              │
+│  │ ID: 0xcd9f8e96341ee1d5f30e2880002b06a1a80f50c4630552e0c6e9ec7e004ff912                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 8                                                                                     │
+│  │ Digest: F4WUtwwV7ymL7dFQnqX4T6AiRkbP2ukzoxDcsFBjrcbV                                           │
+│  └──                                                                                              │
+│ Mutated Objects:                                                                                  │
+│  ┌──                                                                                              │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 8                                                                                     │
+│  │ Digest: ECftyjH5LM4JcXEsLtMmHdiRYEobMA417ZF8w3nnQUvp                                           │
+│  └──                                                                                              │
+│ Gas Object:                                                                                       │
+│  ┌──                                                                                              │
+│  │ ID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                         │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ Version: 8                                                                                     │
+│  │ Digest: ECftyjH5LM4JcXEsLtMmHdiRYEobMA417ZF8w3nnQUvp                                           │
+│  └──                                                                                              │
+│ Gas Cost Summary:                                                                                 │
+│    Storage Cost: 7911600 MIST                                                                     │
+│    Computation Cost: 1000000 MIST                                                                 │
+│    Storage Rebate: 978120 MIST                                                                    │
+│    Non-refundable Storage Fee: 9880 MIST                                                          │
+│                                                                                                   │
+│ Transaction Dependencies:                                                                         │
+│    V58JkCa5qyDaoRoUrsGjn8kaH6tLhrvbfDkQG7TczWt                                                    │
+│    9a5y4cEDXa6piUnWAm1pah5JvxkwfJWHSx1NPg6ctaar                                                   │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────╮
+│ No transaction block events │
+╰─────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Object Changes                                                                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Created Objects:                                                                                 │
+│  ┌──                                                                                             │
+│  │ ObjectID: 0xcd9f8e96341ee1d5f30e2880002b06a1a80f50c4630552e0c6e9ec7e004ff912                  │
+│  │ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                    │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f ) │
+│  │ ObjectType: 0x2::package::UpgradeCap                                                          │
+│  │ Version: 8                                                                                    │
+│  │ Digest: F4WUtwwV7ymL7dFQnqX4T6AiRkbP2ukzoxDcsFBjrcbV                                          │
+│  └──                                                                                             │
+│ Mutated Objects:                                                                                 │
+│  ┌──                                                                                             │
+│  │ ObjectID: 0x9f830e09ef34783e7fba678030a7e2dafce5a8bef1012b4e27fad06d70db1b70                  │
+│  │ Sender: 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f                    │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f ) │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                    │
+│  │ Version: 8                                                                                    │
+│  │ Digest: ECftyjH5LM4JcXEsLtMmHdiRYEobMA417ZF8w3nnQUvp                                          │
+│  └──                                                                                             │
+│ Published Objects:                                                                               │
+│  ┌──                                                                                             │
+│  │ PackageID: 0x431b31b72639bff5109fcb23656f8891d4a98324eb146126d7d8526a7bc0c4dd                 │
+│  │ Version: 1                                                                                    │
+│  │ Digest: 6zsDSiib5Yk2vAeGhLapFiKTUpHGicPoe8xPrasVghM                                           │
+│  │ Modules: hello_world                                                                          │
+│  └──                                                                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Balance Changes                                                                                   │
+├───────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  ┌──                                                                                              │
+│  │ Owner: Account Address ( 0x9d38536027abeec2274f2b750fadba202174da9fbd9fa75a760ee99c8b3ad82f )  │
+│  │ CoinType: 0x2::sui::SUI                                                                        │
+│  │ Amount: -7933480                                                                               │
+│  └──                                                                                              │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+</details>
 
 
 
