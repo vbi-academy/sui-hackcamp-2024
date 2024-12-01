@@ -1,5 +1,7 @@
 # Move on basics
 
+
+## Variables / Constants / Scope
 Trước khi nói về các kiểu dữ liệu, hãy xem cách để khai báo và đặt tên biến trong Sui Move 
 
 Trong Sui move, ta dùng `let` để khai báo và khởi tạo các biến (varibales). Sau khi khai báo biến, bạn có thể dễ dàng access và chỉnh sửa lại. Có nhiều kiểu để khai báo và khởi tạo biến: 
@@ -25,7 +27,7 @@ Tuy nhiên ngoài từ khoá `let` cho các giá trị immutable thì ta còn c�
 
 Ngoài ra, ta còn có từ hằng số (`const`) được dùng để tạo ra các giá trị không thể thay thế. Gọi là hằng số. Đây là ví dụ khi khởi tạo hằng số: 
 
-```
+```rust
 const <Variable> : <Type> = <Expression>
 ```
 
@@ -45,6 +47,48 @@ module sui_bootcamp::constants {
 
 }
 ```
+
+
+> Tuy nhiên bạn có thể sử dụng `Config Pattern` để set up một module để khai báo hằng số cho tất cả các modules khác sử dụng: 
+
+```rust
+module sui_bootcamp::game_config {
+    const PLAYER_MAX_HEALTH: u64 = 1000;
+    const PLAYER_START_COINS: u64 = 50;
+    const WEAPON_DAMAGE: u64 = 25;
+
+    public fun max_health(): u64 { PLAYER_MAX_HEALTH }
+    public fun start_coins(): u64 { PLAYER_START_COINS }
+    public fun weapon_damage(): u64 { WEAPON_DAMAGE }
+}
+
+
+```
+
+Bất kì một biến được khai báo bằng `let` đều có thể được sử dụng trong các biểu thức trong cùng một phạm vi . Phạm vi được xác định bằng các khối biểu thức ( expression blockchain) được đánh dấu bằng cặp dấu ngoặc nhọn `{...}`.
+
+Hiểu đơn giản là các biến local sẽ không thể sử dụng ở ngoài cái scope đó được. Đây là ví dụ:
+
+```rust
+let x = 0;
+{
+    let y = 1;
+};
+x + y // ERROR!
+```
+
+Tuy nhiên, các biến cục bộ từ phạm vi bên ngoài có thể được sử dụng trong một phạm vi lồng nhau:
+
+```rust
+{
+    let x = 0;
+    {
+        let y = x + 1; // valid
+    }
+}
+```
+
+
 
 
 # Các kiểu dữ liệu (data types) Primitive
