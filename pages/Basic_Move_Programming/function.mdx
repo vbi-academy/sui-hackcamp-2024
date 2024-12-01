@@ -300,4 +300,85 @@ fun find_index<T>(vec: &vector<T>, target: &T): Option<u64> {
 ```
 
 ## Macro Functions (Move Advanced - Update Soon)
+Hàm macro trong Move hoạt động gần giống như hàm bình thường: bạn có thể set up parameters, Kiểu trả về và cách nó hoạt động. Bạn cũng có thể sử dụng hàm macro ở bất kỳ đâu trong code của mình. Tuy nhiên điểm khác biệt là khi chạy chương trình, compiler sẽ tự động nhúng toàn bộ code của hàm macro vào đúng vị trí gọi hàm đó.
+
+
+Sự khác biệt giữa macro function và regular function nằm ở: 
+* Macro function syntax extensions 
+* Các tham số Lambda
+
+
+Kí tự ở tham số của macro bắt đầu là `$`, đây là syntax của macro: 
+
+```rust 
+<visibility>? macro fun <identifier><[$type_parameters: constraint],*>([$identifier: type],*): <return_type> <function_body>
+```
+
+
+
+
+Tuy nhiên hiện tại thì lambdas chỉ có thể sử dụng trực tiếp trong macro function. 
+
+
+
+## 
+
+
+Cấu trúc của Lambdas 
+```rust 
+|<type>,*| (-> <type>)?
+```
+
+Ví dụ:
+```rust 
+|u64, u64| -> u128  //  Lambda sẽ lấy 2 giá trị u64 để trả về u128 
+|&mut vector<u8>| -> &mut u8 // // Tương tự lambda có thể lấy giá trị vector và trả về giá trị u8 
+
+
+// Nếu return type không có thì sẽ mặc định là `()`
+
+```
+
+
+Mình lấy ví dụ thay vì bạn chạy một function: 
+```rust
+
+    public fun foo(mut v: u64): u64 {
+        v + 5
+    }
+    
+    #[test]
+    public fun test_macro(){ 
+       let mut v = vector[1, 2, 3, 4, 5];
+
+       let mut value = 0; 
+        v.reverse();
+
+        while (!v.is_empty()) {
+            value = foo(v.pop_back());
+
+            debug::print(&v);
+            debug::print(&value);
+        }
+
+
+    }
+```
+kết quả là: 
+![](../assets/Basic_Move_Programming_image/foo_macro.png)
+
+
+
+thì giờ mình chỉ cần viết ngắn gọn: 
+
+```rust
+vector[1, 2, 3, 4, 5].do!(|x| foo(x));
+```
+
+
+
+
+
+
+
 Tài liệu: https://blog.sui.io/move-2024-macros-beta/

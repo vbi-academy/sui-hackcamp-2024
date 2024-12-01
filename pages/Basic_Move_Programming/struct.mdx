@@ -77,4 +77,53 @@ let name = stu_2.name;
 > Vậy làm thế nào để phân rã và hủy structs trong Move?
 
 
+## Naming structs ( Đặt tên cho Struct )
 
+Struct có thể bắt đầu bằng các chữ cái in hoa từ `A` tới `Z`. Sau từ đầu tiên thì tên struct có thể bao gồm dấu gạch ngang `_`, từ `a` tới `z`, và số `0` đến `9`: 
+
+
+```rust 
+public struct NFTCollection {}
+public struct MarketPlace {}
+public struct Game_Token_V1 {}
+public struct Defi_Pool_123 {}
+public struct Coin_Market_Data {}
+```
+
+
+
+## Creating Structs 
+
+Các giá trị của struct type được tạo ra phải match với 
+
+```rust 
+module hack_camp::struct_example {
+    use std::debug;
+
+    public struct Hackcamp_5 has drop{
+        verifed: bool,
+        number: u64
+    }
+
+
+    public struct Hack_camp_para(bool, u64) has drop;
+
+    
+    #[test]
+    public fun test_struct(){   
+
+        let var_hack_camp = Hackcamp_5{verifed: true, number: 16}; 
+        debug::print(&var_hack_camp);
+
+        let hack_camp_test = Hack_camp_para(true, 20);
+        debug::print(&hack_camp_test);
+    }
+
+
+}
+```
+
+![](../assets/Basic_Move_Programming_image/struct_created_example.png)
+
+
+Tuy nhiên, 
