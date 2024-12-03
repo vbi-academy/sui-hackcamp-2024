@@ -632,10 +632,106 @@ Giới hạn này chỉ cho phép 122 ký tự có thể in được đầu tiê
 
 
 
-## Option Type(Update soon)
+## Option Type 
+Option là một kiểu dữ liệu dùng để represent một cái giá trị có thể hoặc không cần tồn tại. Khái niệm từ Option mượn từ ngôn ngữ rust. Bạn có thể học qua khoá học rust bootcamp để hiểu về type này nha. 
 
-Option là một kiểu dữ liệu dùng để represent một cái giá trị có thể hoặc không cần tồn tại. Khái niệm từ Option mượn từ ngôn ngữ rust. Bạn có thể học qua khoá học rust bootcamp để hiểu về type này nha  
+Option là một cách đơn giản để xử lý dữ liệu khi không chắc chắn một giá trị có tồn tại hay không. Điều này giúp tránh được các lỗi phổ biến trong lập trình. Option luôn an toàn để sử dụng vì nó được thiết kế để xử lý cả trường hợp có dữ liệu và không có dữ liệu. Ưu điểm của cách này là làm cho code rõ ràng hơn, vì lập trình viên có thể dễ dàng biết được đâu là những giá trị có thể không tồn tại.  Option là generic type được định nghĩa trong thư viện tiêu chuẩn của move dưới `std::option` . Module cung cấp nhiều function bao gồm tạo `Some` và `None` instances, kiểm tra states..
+
+```rust
+// Return an `Option` containing `e`
+public fun some<Element>(e: Element): Option<Element> {
+    Option { vec: vector::singleton(e) }
+}
+
+public fun none<Element>(): Option<Element> {
+    Option { vec: vector::empty() }
+}
+```
+
+Đây là ví dụ cách tạo Option instances: 
+```rust
+let some_value: Option<vector<u8>> = option::some(b"Alice");
+let none_value: Option<vector<u8>> = option::none();
+
+```
 
 
+### Option có nhiều methods:
+
+Để sử dụng kiểu `Option` , bạn cần import module `std::option` và sử dụng kiểu `Option`. Sau đó bạn có thể tạo một giá trị `Option` bằng cách sử dụng các phương thức `some` hoặc `none`.
+
+* `is_none` trả về true nếu option là None
+
+```
+let absent = option::none();
+assert!(option::is_none(&absent), 0);
+```
+
+* `is_some`: trả về true nếu option là Some
+
+```rust 
+let some_value = option::some(42);
+assert!(option::is_some(&some_value), 0);
+```
 
 
+* `contains` trả về true nếu Option chứa giá trị cụ thể.
+
+```rust 
+let some_value = option::some(42);
+assert!(option::contains(&some_value, &42), 0);
+```
+
+* Một giá trị có thể đọc từ Option:
+
+```rust
+let some_value = option::some(12);
+let value = option::borrow(&some_value);
+
+
+//  value có thể đọc với giá trị ở trong Option, nếu giá trị trong Option không có thì sẽ lấy giá trị ở tham số bên cạnh  là 42
+let value_default = option::borrow_with_default(&some_value, &42);
+debug::print(value_default);
+
+```
+
+
+* Một tham chiếu có thể thay đổi (mutable reference) tới giá trị có thể được lấy ra từ Option và được sử dụng để chỉnh sửa giá trị đó:
+
+```rust 
+let mut some_value = option::some(42);
+let value = option::borrow_mut(&mut some_value);
+*value = 45;
+
+debug::print(value)
+```
+
+
+* Giá trị bên trong một Option có thể được thay thế bằng một giá trị mới:
+
+```rust 
+let mut _value = option::some(40);
+let old_value = option::swap(&mut _value, 45);
+
+debug::print(&_value);
+debug::print(&old_value);
+```
+
+* Các giá trị cũng có thể được điền vào hoặc trích xuất từ một Option:
+```rust
+let mut  absent = option::none();
+debug::print(&absent);
+
+option::fill(&mut absent, 42);
+debug::print(&absent);
+
+let value = option::extract(&mut absent);
+debug::print(&value);
+debug::print(&absent);
+
+```
+
+![](../assets/Basic_Move_Programming_image/option_example.png)
+
+
+ 

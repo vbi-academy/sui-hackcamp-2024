@@ -27,7 +27,7 @@ Ví dụ về cách if-else:
 
 #[test] 
     fun test_if_else(){
-        let x = 6;
+        let x = 7;
         
         // // thay vi viet nhu the nay 
         // if(x> 0){
@@ -38,11 +38,15 @@ Ví dụ về cách if-else:
 
         // ta co the viet the nay 
         
-        let y = if(x >0) {
-            43
-        } else {
-            45
-        };
+        let y = if (x < 5) {
+            1
+        } else if (x < 10 && x > 5){
+            2
+         } else {
+            3
+         };
+        
+        debug::print(&y)
     }
 
 ```
@@ -172,11 +176,73 @@ fun is_positive(x: u8): bool {
 ```
 
 
+## Pattern Matching 
+
+Câu lệnh match có chức năng tương tự với câu lệnh switch trong các ngôn ngữ khác vậy. Câu lệnh match sẽ kiểm tra xem một biến có giá trị bằng một giá trị nào đó hay không, nếu có thì thực hiện các câu lệnh tương ứng. Cú pháp của câu lệnh match như sau:
+
+![](../assets/Basic_Move_Programming_image/matching_example.png)
+
+Lệnh match có hai phần chính: một biểu thức cần kiểm tra và một danh sách các trường hợp (được ngăn cách bởi dấu phẩy). Mỗi trường hợp gồm có:
+
+- Một mẫu so khớp (`p`)
+- Một điều kiện không bắt buộc (`if (g)`, với `g` là điều kiện đúng/sai)
+- Dấu mũi tên (`=>`)
+- Một biểu thức (`e`) sẽ chạy khi tìm thấy trường hợp phù hợpớp. 
+
+
+Ví dụ: 
+
+```rust
+fun run(x: u64): u64 {
+    match (x) {
+        1 => 2,
+        2 => 3,
+        x => x,
+    }
+}
+
+run(1); // returns 2
+run(2); // returns 3
+run(3); // returns 3
+run(0); // returns 0
+
+```
+
+Nội dung của Pattern sẽ sẽ được viết chi tiết hơn trong mục Enum để hiểu sâu về các cấu trúc trong sui move.
+
+
 
 ### Labels 
-Control flow có thể bị thay đổi bằng cách dùng `Labels`. Khi sử dụng `Labels`, ta có thể làm cho quá trình thực thi nhảy từ câu lệnh này sang câu lệnh khác. Labels được khai báo bằng `'label_name`:
+Ta có thể dùng `break` và `continue` ở các vòng lặp bên ngoài (outer loops) trong khi xử lý vòng lặp bên trong (inner loops). Trong những trường hợp này, các vòng lặp phải được chú thích bằng nhãn `'label`
+
+Khi sử dụng `Labels`, ta có thể làm cho quá trình thực thi nhảy từ câu lệnh này sang câu lệnh khác. Labels được khai báo bằng `'label_name`: 
 
 ```rust
 'increment: block_of_code
 ```
+
+Ví dụ: 
+
+
+```rust 
+
+'outer: loop { 
+    debug::print(b"The outer lôp".to_string());
+
+    'inner: loop {
+        debug::print(b"The inner loop".to_string());
+
+        // lệnh break dứoi này chỉ có thể break ở vòng lặp bên trong do không có nhãn 
+        //break
+
+
+        // lệnh này sẽ break vòng lặp ở bên ngoài 
+        break 'outer;
+    }   
+
+    debug::print(b"Inf loop".to_string());
+
+}
+```
+
 
