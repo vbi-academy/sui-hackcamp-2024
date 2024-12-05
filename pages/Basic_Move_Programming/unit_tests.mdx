@@ -1,0 +1,136 @@
+# Unit tests
+
+Một phần quan trọng trong phát triển phần mềm, và đặc biệt hơn - phát triển blockchain, chính là kiểm thử.
+Trong bài viết này, chúng ta sẽ tìm hiểu các kiến thức cơ bản về kiểm thử trong Move và cách viết cũng như tổ chức các bài kiểm thử cho Move của bạn
+
+
+## Cách viết test cơ bản 
+
+
+```rust
+// tests/sui_bootcamp_tests.move
+#[test_only]
+module sui_bootcamp::sui_bootcamp_tests;
+
+// Test luôn đúng 
+#[test]
+fun test_sui_bootcamp() {
+    // pass
+    let sum = 2 +2;
+    assert!(sum == 4);
+}
+
+// Test sẽ fail
+#[test, expected_failure(abort_code = ENotImplemented)]
+fun test_sui_bootcamp_fail() {
+    abort ENotImplemented
+}
+```
+
+## Cách chạy test
+
+```bash
+sui move test
+```
+```bash
+Running Move unit tests
+[ PASS    ] sui_bootcamp::sui_bootcamp_tests::test_sui_bootcamp
+[ PASS    ] sui_bootcamp::sui_bootcamp_tests::test_sui_bootcamp_fail
+Test result: OK. Total tests: 2; passed: 2; failed: 0
+```
+
+## Cách viết test thực tế
+
+Sử dụng code trong bài [events và errors](./events_and_errors#ví-dụ-1) 
+
+
+```rust
+// tests/sui_bootcamp_tests.move
+#[test_only]
+module sui_bootcamp::sui_bootcamp_tests;
+use sui::test_scenario;
+
+use sui_bootcamp::anhtraisayhi::{AnhtraisayhiTicket, create_ticket, delete_ticket, ENotOwner};
+
+
+#[test]
+fun test_sui_bootcamp_is_work() {
+
+    // định nghĩa dummy address 
+    let dummy_address = @0xCAFE;
+
+    // kiểm tra create ticket và delete ticket hoạt động 
+
+    // Sử dụng test_scenerio để simulate môi trường runtime test 
+
+    // Sử dụng dummy address để làm signer cho transaction create ticket 
+    let mut scenario = test_scenario::begin(dummy_address);
+    {
+        // Create ticket 
+        create_ticket( scenario.ctx());
+    };
+    
+    scenario.next_tx(dummy_address);
+    {
+        let ticketObject = scenario.take_from_sender<AnhtraisayhiTicket>();
+
+        scenario.return_to_sender(ticketObject);
+    };
+
+    // sau đó delete ticket 
+    scenario.next_tx(dummy_address);
+    {
+        // sau khi tạo ticket xong -> quyền owner chuyển qua cho dummy_address 
+        // Sử dụng take_from_sender để lấy object AnhtraisayhiTicket mà dummy address sở hữu 
+        let ticketObject = scenario.take_from_sender<AnhtraisayhiTicket>();
+        delete_ticket(ticketObject, scenario.ctx());
+
+    };
+ 
+    scenario.end();
+
+
+}
+
+#[test]
+#[expected_failure(abort_code = ENotOwner)]
+fun test_sui_bootcamp_fail() {
+    // định nghĩa dummy address 
+    let alice = @0xCAFE;
+    let bob = @0xCAFF;
+
+    let mut scenario = test_scenario::begin(alice);
+    {
+        // Create ticket 
+        create_ticket( scenario.ctx());
+    };
+    
+    scenario.next_tx(bob);
+    {
+        // lấy ticket object từ owner alice 
+        let ticketObject = scenario.take_from_address<AnhtraisayhiTicket>(alice);
+        // bob thực hiện xoá ticket 
+        // -> lỗi
+        delete_ticket(ticketObject, scenario.ctx());
+        abort 0
+    }
+
+}
+```
+
+Kết quả: 
+
+
+```bash
+Running Move unit tests
+[ PASS    ] sui_bootcamp::sui_bootcamp_tests::test_sui_bootcamp_fail
+[ PASS    ] sui_bootcamp::sui_bootcamp_tests::test_sui_bootcamp_is_work
+Test result: OK. Total tests: 2; passed: 2; failed: 0
+```
+
+
+
+
+
+
+
