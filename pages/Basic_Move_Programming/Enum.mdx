@@ -1,0 +1,140 @@
+# Enum là gì ? 
+
+Enum là một cách tạo kiểu dữ liệu riêng, khác với struct. Lấy ví dụ về địa chỉ IP: có hai loại địa chỉ IP phổ biến là IPv4 và IPv6. Vì một địa chỉ IP chỉ có thể là một trong hai loại này, chúng ta dùng enum để liệt kê các giá trị có thể có.
+
+Một địa chỉ IP chỉ có thể là IPv4 hoặc IPv6 - không thể là cả hai cùng lúc. Đây là lý do tại sao chúng ta dùng *enum*, vì *enum* chỉ cho phép chọn một giá trị duy nhất từ danh sách các lựa chọn. Dù là IPv4 hay IPv6, chúng đều là địa chỉ IP, nên ta có thể xử lý chúng như một kiểu dữ liệu chung.
+
+```rust
+public enum IpAddrKind {
+    V4,
+    V6,
+}
+
+// ví dụ khác như 
+public enum Action {
+    Stop,
+    Pause { duration: u32 },
+    MoveTo { x: u64, y: u64 },
+    Jump(u64),
+}
+
+```
+
+Ví dụ khác là khai báo một enum `Action` đại diện cho các hành động khác nhau có thể được thực hiện trong game -- bạn có thể `Stop` (dừng lại), `Pause` (tạm dừng) trong một khoảng thời gian nhất định, `MoveTo` (di chuyển) đến một vị trí cụ thể, hoặc `Jump` (nhảy) đến một độ cao cụ thể. 
+
+Tương tự như structs, enums có thể có các [abilities](https://move-book.com/reference/abilities.html) để kiểm soát những thao tác có thể thực hiện trên chúng. Tuy nhiên, điều quan trọng cần lưu ý là enums không thể có khả năng `key` 
+
+# Cách định nghĩa một Enum
+
+Enums phải được định nghĩa trong một module, một enum phải chứa ít nhất một biến thể, và mỗi biến thể của enum có thể **không có trường, có các trường theo vị trí, hoặc có các trường được đặt tên**. Dưới đây là một số ví dụ cho mỗi loại:
+
+```rust
+module bootcamp::learner {
+    public enum LearnerStatus has drop {
+        Active,  // Học viên đang học tích cực
+        Inactive(u64),  // Học viên không hoạt động, kèm số ngày vắng mặt
+        OnBreak(start_date: u64, duration: u64),  // Học viên tạm nghỉ có thời hạn
+    }
+
+    public enum Assignment has copy, drop {
+        Submitted(vector<u8>),  // Bài tập đã nộp với hash của bài
+        InReview { reviewer: address, deadline: u64 },  // Bài đang được review
+        Completed { grade: u64, feedback: String },  // Bài đã hoàn thành với điểm và feedback
+    }
+}
+```
+
+Trong ví dụ này, mình đã tạo hai enum để t**heo dõi trạng thái của học viên và bài tập**, thể hiện cả ba dạng biến thể của enum như đã đề cập. 
+
+Tất cả các enum được khai báo là `public`. Điều này có nghĩa là kiểu của enum có thể được tham chiếu từ bất kỳ module nào khác. Tuy nhiên, các biến thể của enum, các trường trong mỗi biến thể, và khả năng tạo hoặc hủy các biến thể của enum chỉ được sử dụng trong nội bộ module định nghĩa enum đó.
+
+Và cũng giống với struct thì để có thể dùng các giá trị có thể copied, dropped hay lưu trữ trong object. Bạn cần có các abilities mà mình đã viết ở các phần trước. 
+
+```
+module sui_bootcamp::foo_module {
+    public enum Foo has copy, drop {
+        VariantWithNoFields,
+    }
+
+```
+
+# Quy tắc đặt tên
+
+Tên trong Enum và các biến thể của nó phải bắt đầu bằng các chữ in hoa từ A đến Z. Sau chữ cái đầu tiên, tên enum có thể chứa dấu gạch dưới `_`, chữ thường từ `a` đến `z`, chữ in hoa từ `A` đến `Z`, hoặc chữ số từ `0` đến `9` 
+
+```rust
+public enum Foo { Variant }
+public enum BAR { Variant }
+public enum B_a_z_4_2 { V_a_riant_0 }
+```
+
+
+# Sử dụng Enums
+
+Để tạo một giá trị enum, bạn cần chọn một biến thể và điền các giá trị cần thiết cho nó. Luôn phải dùng tên enum khi chọn biến thể.
+
+Có ba cách để tạo giá trị cho biến thể enum:
+
+1. Nếu biến thể không có trường nào: Chỉ cần ghi tên biến thể
+2. Nếu biến thể có các trường đặt tên: Dùng dấu ngoặc nhọn {} và điền tên trường. Thứ tự điền không quan trọng
+3. Nếu biến thể có các trường theo vị trí: Dùng dấu ngoặc tròn () và điền giá trị theo đúng thứ tự khai báo
+
+```rust
+module sui_bootcamp::student {
+    public enum StudentStatus has drop {
+        Active,  // Học viên đang tham gia khóa học
+        Graduated(u64),  // Đã tốt nghiệp, kèm điểm số
+        OnLeave { reason: String, return_date: u64 }  // Tạm nghỉ có lý do
+    }
+
+    fun example() {
+        let active_student = StudentStatus::Active;
+        let graduated = StudentStatus::Graduated(95);
+        let on_leave = StudentStatus::OnLeave { 
+            reason: string::utf8(b"Personal"), 
+            return_date: 12_09_2020u64
+        };
+    }
+}
+```
+
+Vì các giá trị enum có thể có nhiều hình dạng khác nhau, việc truy cập trường của các biến thể bằng dấu chấm không được phép như với các trường của struct. Thay vào đó, để truy cập các trường trong một biến thể -- dù là theo giá trị, tham chiếu bất biến hay tham chiếu có thể thay đổi -- bạn phải sử dụng **pattern matching**.
+
+Bạn có thể thực hiện pattern matching trên các giá trị Move theo giá trị, tham chiếu bất biến, và tham chiếu có thể thay đổi. **Khi pattern matching theo giá trị, giá trị sẽ được chuyển vào nhánh match**. 
+
+Câu lệnh `match` được sử dụng để pattern matching trên một giá trị Move và bao gồm một số *nhánh match*. **Mỗi nhánh match bao gồm một mẫu, một mũi tên `=>`, và một biểu thức**, theo sau là dấu phẩy `,`.
+
+
+Để xem cách thực hiện pattern matching trên một enum để cập nhật các giá trị bên trong nó một cách có thể thay đổi, hãy xem ví dụ sau về một enum đơn giản có hai biến thể, mỗi biến thể có một trường. Chúng ta có thể viết hai hàm, một hàm chỉ tăng giá trị của biến thể đầu tiên, và một hàm khác chỉ tăng giá trị của biến thể thứ hai:
+
+```
+public enum SimpleEnum has drop {
+        Variant1(u64),
+        Variant2(u64),
+    }
+
+    public fun incr_enum_variant1(simple_enum: &mut SimpleEnum) {
+    
+        match (simple_enum) {
+            SimpleEnum::Variant1(mut value) => *value += 1,
+            _ => (),
+        }
+    }
+
+    public fun incr_enum_variant2(simple_enum: &mut SimpleEnum) {
+        match (simple_enum) {
+            SimpleEnum::Variant2(mut value) => *value += 1,
+            _ => (),
+        }
+    }
+```
+
+Ta cùng chạy test  Bây giờ, nếu chúng ta có một giá trị của `SimpleEnum` thì chúng ta có thể sử dụng các hàm để tăng giá trị của biến thể này:
+```rust
+ #[test]
+    public  fun example_enum(){
+        let mut x = SimpleEnum::Variant1(10);
+        incr_enum_variant1(&mut x);
+        debug::print(&x);
+    }
+```
