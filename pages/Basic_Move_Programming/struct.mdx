@@ -1,12 +1,11 @@
 
-# Struct (Update soon)
+# Struct 
 
 Structs (cấu trúc) là một trong những kiểu dữ liệu tùy chỉnh được sử dụng phổ biến nhất. Ngôn ngữ Move sử dụng structs để biểu diễn một tập hợp các dữ liệu có liên quan với nhau, tương tự như structs hoặc objects trong các ngôn ngữ lập trình khác. Bài viết này sẽ đi sâu vào cách sử dụng và các tính năng của structs trong Move. 
 
 ## Khái niệm Structs 
 
 Trong Move, một struct được defined bằng `struct` được đứng trước bởi `public`. Cấu trúc của Struct bao gồm struct name và các fields trong đó. Mỗi field sẽ đi kèm với tên và data type của nó, được phân cách bởi dấu phẩy. Dưới đây là syntax và ví dụ: 
-
 
 ```rust
 // syntax
@@ -76,6 +75,18 @@ let name = stu_2.name;
 
 > Vậy làm thế nào để phân rã và hủy structs trong Move?
 
+Ta có thể gán trong các mẫu sử dụng cú pháp tương tự như khi khởi tạo structs hoặc binding. Ví dụ: 
+
+
+```rust 
+let x: u64;
+let y: bool;
+let foo = Foo { x: 0, y: false };
+let Foo { x, y: _ } = foo; 
+
+// hoac la 
+let Foo { x, y } = &foo;
+```
 
 ## Naming structs ( Đặt tên cho Struct )
 
@@ -90,40 +101,58 @@ public struct Defi_Pool_123 {}
 public struct Coin_Market_Data {}
 ```
 
+## Mượn(borrowing) struct và các trường 
+
+Toán tử & và &mut có thể được sử dụng để tạo tham chiếu đến các struct hoặc fields. Các ví dụ như: 
 
 
-## Creating Structs 
+```rust
+let foo = Foo { x: 3, y: true };
 
-Các giá trị của struct type được tạo ra phải match với 
+let foo_ref: &Foo = &foo;
 
-```rust 
-module hack_camp::struct_example {
-    use std::debug;
+let y: bool = foo_ref.y;
+debug::print(&y);
 
-    public struct Hackcamp_5 has drop{
-        verifed: bool,
-        number: u64
-    }
-
-
-    public struct Hack_camp_para(bool, u64) has drop;
-
-    
-    #[test]
-    public fun test_struct(){   
-
-        let var_hack_camp = Hackcamp_5{verifed: true, number: 16}; 
-        debug::print(&var_hack_camp);
-
-        let hack_camp_test = Hack_camp_para(true, 20);
-        debug::print(&hack_camp_test);
-    }
-
-
-}
+let x_ref: u64 = foo.x; 
+debug::print(&x_ref);
 ```
 
-![](../assets/Basic_Move_Programming_image/struct_created_example.png)
+* Ta có thể mượn  các trường bên trong của các struct lồng nhau( nested structs):
 
+```rust
+let foo = Foo { x: 3, y: true };
+let bar = Bar(foo);
 
-Tuy nhiên, 
+let x_ref = &bar.0.x;
+// x_ref = 3 
+
+```
+
+* Bạn cũng có thể mượn một trường đã qua tham chiếu(reference) đến một struct:
+
+```rust
+
+ public struct Foo has drop { x: u64, y: bool }
+
+    #[test]
+    fun example() {
+        let mut foo = Foo { x: 0, y: false };
+        
+        debug::print(&foo);
+       
+        
+        let foo_ref = &foo;
+        let x_ref = foo_ref.x;
+
+        // chỉnh sửa lại biến 
+        let x_ref_mut = &mut foo.x;
+        *x_ref_mut = 5;
+
+        debug::print(&foo);
+
+    }
+
+```
+
+![](../assets/Basic_Move_Programming_image/borrow_struct.png)

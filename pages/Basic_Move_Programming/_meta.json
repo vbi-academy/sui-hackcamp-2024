@@ -3,7 +3,9 @@
   "control_flow": "Control flow trong sui move hoạt động như thế nào ? ",
   "function": "Function trong sui move hoạt động như thế nào ? ",
   "struct": "Khái niệm về struct",
-  "ablities": "ablities",
+  "ablities": "Ablities là gì?",
+  "Enum": "Enum là gì?",
+  "Generics_and_phantom": "Generic và Phantom",
   "events_and_errors": "events và errors",
   "unit_tests": "Viết testcase cho Sui move"
 }

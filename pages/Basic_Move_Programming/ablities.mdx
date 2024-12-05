@@ -6,13 +6,171 @@ Trong trang này, bạn sẽ tìm hiểu chi tiết về các abilities trong Su
 
 ## Vậy chính xác thì Abilities là gì? 
 
-Trong lập trình Move, ablities giống như những quy tắc đặc biệt giúp bạn quyết định bạn sẽ làm gì với các thông tin dữ liệu như là cấp quyền(permisions) bất kì cho tài liệu đó như được chia sẻ hay edit nó.
+Abilities (Khả năng) là một tính năng đặc biệt trong ngôn ngữ lập trình Move. Nó giống như một "quyền hạn" cho phép dữ liệu tương tác với **blockchain**. Abilities giúp đảm bảo an toàn khi phát triển **smart contract** bằng cách kiểm soát cách sử dụng dữ liệu. Nó hoạt động như một bộ quy tắc để bảo vệ dữ liệu khỏi những thao tác không mong muốn.
 
+Khi tạo một struct (kiểu dữ liệu), chúng ta gán Abilities cho nó. Sau đó, mọi thực thể được tạo ra từ struct đó sẽ tự động có những Abilities này. Điều này không chỉ áp dụng cho struct mà còn cho các kiểu dữ liệu khác. Để gán Abilities, chúng ta dùng từ khóa `has`.
 
-Đây là ví dụ là của kiểu abilities - định nghĩa một object có thể làm và có thể là: 
-```
-struct OwnerCap has key, store {
-    id: UID
+Đây là cú pháp: 
+
+```tsx
+// This struct has the abilities "copy" and "drop".
+<type> <name> has copy, drop {
+    // field: Type1,
+    // field2: Type2,
+    // ...
 }
 ```
+
+## Chức năng của các abilities là
+
+1.**Bảo mật**: Abilities thực thi các quy tắc để ngăn chặn lỗi kiểu dữ liệu, ví dụ như ngăn việc sao chép một kiểu không thể sao chép hoặc lưu trữ một kiểu không thể lưu trữ.
+
+2.**Quản lý tài nguyên**: Bằng cách chỉ định abilities, Move đảm bảo quản lý đúng các tài nguyên như bộ nhớ và lưu trữ, ngăn chặn các vấn đề như rò rỉ bộ nhớ.
+
+3.**Kiểm soát truy cập**: Abilities kiểm soát cách các kiểu dữ liệu có thể được truy cập và thao tác, đảm bảo các hoạt động được thực hiện an toàn và chính xác.
+
+## **Bốn Abilities trong Move**
+
+1. key: . Các đối tượng có khả năng này sẽ có ID duy nhất để tìm kiếm và sử dụng trong bộ nhớ toàn cục của Sui.
+2. store: cho phép các đối tượng của cấu trúc tồn tại trong global storage, từ đó có thể chia sẻ và quản lý tài nguyên giữa nhiều giao dịch. Nó cũng có thể được sử dụng như các trường của object khác.
+3. Drop: cho phép xóa hoặc loại bỏ các fields của struct. Các objects có khả năng này có thể tự động **hủy(destruction)** mà không cần xóa thủ công.
+4. copy: cho phép sao chép các instances của struct, tức là cho phép sao chép đối tượng. Move là ngôn ngữ hướng đến resource management. Các đối tượng như token  không được phép sao chép (giống như trong thế giới thực bạn không được phép sao chép tiền mặt để có thêm tài sản), vì vậy bạn cần sử dụng khả năng copy để chỉ định rõ ràng những đối tượng nào có thể được sao chép.,
+
+
+
+### Key ability 
+Trong Move, khả năng key và store liên kết với cách lưu trữ dữ liệu trên blockchain. Khả năng key cho phép một kiểu dữ liệu hoạt động như **một chìa khóa** để truy cập bộ nhớ. Điều này có nghĩa là người dùng (thông qua địa chỉ của họ) có thể trực tiếp sở hữu và quản lý các dữ liệu có key.
+
+*Trong Sui, khi sử dụng khả năng key, bạn phải bao gồm một ID duy nhất (gọi là UID) cho mỗi tài nguyên. UID này hoạt động như một thẻ đặc biệt giúp theo dõi và xác định từng tài nguyên hoặc đối tượng, đảm bảo không có bản sao trùng lặp. Khi một struct (cấu trúc dữ liệu) có khả năng key, nó trở thành thứ chúng ta gọi là "object" trong Sui.*
+
+Ví dụ: 
+```
+ use sui::object::{Self, UID};
+
+    public struct MyObject has key {
+        id: UID, // required
+        name: String,
+    }
+
+    /// Creates a new Object with a Unique ID
+    public fun new(name: String, ctx: &mut TxContext): MyObject{
+        let my_object = MyObject {
+            id: object::new(ctx), // creates a new UID
+            name,
+        };
+
+        
+    }
+```
+
+### Store ability 
+Khả năng store trong Move cho phép các đối tượng được lưu trữ trong bộ nhớ toàn cục. Khả năng này thường được sử dụng kết hợp với khả năng key để đảm bảo các đối tượng vừa có thể được xác định duy nhất vừa có thể được chuyển  tự do trong bộ nhớ toàn cục. Khác với các khả năng khác, store không kiểm soát các hoạt động trực tiếp. **Thay vào đó, nó kết hợp với key để kiểm soát cách các giá trị có thể tồn tại trong bộ nhớ.**
+
+Trong Sui, store có hai nhiệm vụ chính:
+
+1. **Quyết định những gì có thể được lưu trữ bên trong một object**
+2. **Kiểm soát những object nào có thể được di chuyển ra khỏi module gốc của chúng**
+
+Đối với các đối tượng chỉ có **khả năng key**:
+
+- **Có thể được lưu trữ trong bộ nhớ toàn cục**
+- **Không thể di chuyển tự do** - việc di chuyển phải tuân theo các quy tắc cụ thể trong smart contract
+- **Chủ yếu được sử dụng để cấp ID duy nhất** cho các thứ như tài khoản người dùng
+
+Các đối tượng có **cả khả năng key và store:**
+
+- Có thể được lưu trữ trong bộ nhớ toàn cục, giống như các đối tượng chỉ có key
+- Chủ sở hữu có thể tự do di chuyển chúng giữa các tài khoản khác nhau
+- Rất phù hợp cho những thứ cần di chuyển thường xuyên, nh**ư token số hoặc tài sản số**
+- Lưu ý quan trọng: Nếu một đối tượng có khả năng key nhưng không có khả năng store, nó không thể được di chuyển tự do trong bộ nhớ. Quy tắc này giúp giữ an toàn và ổn định cho các tài nguyên quan trọng.
+
+
+Ví dụ:
+
+```
+// A struct without any abilities
+public struct NoAbilities {}
+
+public struct WantsCopy has key {
+    f: NoAbilities, // ERROR 'NoAbilities' does not have 'copy'
+}
+
+
+//  Khai báo đúng sẽ là 
+public struct NoAbilities has store {}
+
+public struct WantsCopy has key {
+    id: UID,
+    f: NoAbilities,
+}
+```
+
+Như vậy `Assets` trong Sui là một struct có 2 abilites là key và store. Assets sẽ được lưu trữ trong global storage và có thể transfer giữa các accounts. 
+
+
+### Copy ability 
+
+
+```rust
+    public struct Course has copy {
+        name: String,
+        sections: u8,
+    }
+
+
+    #[test]
+    fun example() {
+        let c = Course { name: b"Sui bootcamp 2024".to_string(), sections: 4 };
+        let c_copy = c; // Course has copy ability
+    }
+```
+
+
+### Drop ability 
+Move quản lý bộ nhớ khác với các ngôn ngữ lập trình thông thường. Khi chúng ta không cần dùng dữ liệu nữa, Move yêu cầu chúng ta phải tự xóa nó đi để giải phóng bộ nhớ. Đây là lúc chúng ta dùng drop ability. Nếu không xóa dữ liệu đúng cách, chương trình sẽ báo lỗi ngay khi biên dịch.
+Cách làm này tuy phức tạp hơn, nhưng nó giúp phát hiện lỗi sớm - ngay khi viết code thay vì khi chạy chương trình. Điều này rất quan trọng khi phát triển **ứng dụng phi tập trung (DApps)**.
+
+Cú pháp:
+
+```rust
+<visibility modifier> <type> <name> has drop {}
+```
+
+> Tương tự như copy, việc không thể sao chép tài nguyên một cách tùy ý là một tính năng thiết kế của Move nhằm đại diện an toàn cho tài sản số và các tài nguyên. Khả năng drop cho phép xóa dễ dàng các thực thể không cần thiết. Do đó, nếu bạn muốn đảm bảo các thực thể không bị xóa một cách không cần thiết, đừng cấp khả năng drop cho kiểu dữ liệu đó. Bằng cách này, bạn có thể đảm bảo tài nguyên sẽ được xử lý đúng cách.
+
+
+Ví dụ khi sử dụng `drop`: 
+
+```rust
+
+     public struct DropMe has drop {
+        id: u8,
+        name: String,
+    }
+
+    /// This struct doesn't have the `drop` ability.
+    public struct NoDrop {
+        id: u8,
+        name: String,
+    }
+
+    #[test]
+    fun test_ignore() {
+        
+        let _ = DropMe { id: 1, name: string::utf8(b"sui_bootcamp") };
+
+		
+		let no_drop = NoDrop {id: 1, name: string::utf8(b"sui_bootcamp")};				
+        let NoDrop {id: _, name: _ } = no_drop;
+
+    }
+```
+
+
+
+
+## No abilities
+Khi một struct không được gán bất kỳ ability nào, nó sẽ có những hạn chế đặc biệt - không thể xóa, không thể sao chép và không thể lưu trong bộ nhớ. Chúng ta gọi loại struct này là *Hot Potato* (củ khoai tây nóng).
+
+Tên gọi này nghe có vẻ vui, nhưng nó giúp ta dễ hiểu: giống như khi bạn cầm một củ khoai tây nóng, bạn chỉ có thể chuyền nó đi và phải xử lý nó ngay lập tức. Hot Potato là một kỹ thuật thiết kế quan trọng trong Move và bạn có thể tìm hiểu thêm trong tài liệu này: 
 
