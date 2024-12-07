@@ -5,7 +5,7 @@
   "struct": "Khái niệm về struct",
   "ablities": "Ablities là gì?",
   "Enum": "Enum là gì?",
-  "Generics_and_phantom": "Generic và Phantom",
+  "Generics_and_phantom": "Generic là gì? ",
   "events_and_errors": "events và errors",
   "unit_tests": "Viết testcase cho Sui move"
 }
