@@ -148,9 +148,6 @@ fun test_swap_type_params() {
   
     
 ```
-
-
-
 ## Tại sao cần dùng generics ?
 
 Qua các ví dụ trên, ta đã học cách tạo và sử dụng các kiểu generic cơ bản. Nhưng generic còn có một ưu điểm quan trọng hơn: nó cho phép chúng ta viết code một lần và dùng được cho nhiều kiểu dữ liệu khác nhau. Điều này rất tiện lợi, đặc biệt khi làm việc với các tập hợp dữ liệu (collections) và các tính năng nâng cao trong Move.
@@ -167,3 +164,34 @@ public struct User<T> {
 In the example above, `User` is a generic type with a single type parameter `T`, with shared fields `name` and `age`, and the generic `metadata` field which can store any type. No matter what the `metadata` is, all of the instances of `User` will have the same fields and methods.
 
 Trong ví dụ trên, `User` là một kiểu dữ liệu generic với một tham số kiểu `T`, có các trường chung là `name` và `age`, và trường generic `metadata` có thể lưu trữ bất kỳ kiểu dữ liệu nào. Dù `metadata` là gì đi nữa, tất cả các thể hiện của `User` đều sẽ có cùng các trường và phương thức.
+
+
+## Phantom type 
+
+Phantom generics là các tham số generic không được sử dụng trong các trường hoặc phương thức của struct.
+
+
+```Rust
+// A generic type with a phantom type parameter.
+public struct Coin<phantom T> {
+    value: u64
+}
+```
+
+Ví dụ chúng ta tạo một  Coin không sử dụng tham số kiểu T trong bất kỳ trường hay phương thức nào. Nó chỉ dùng để phân biệt giữa các loại coin khác nhau và áp đặt các ràng buộc lên tham số kiểu T. 
+
+
+```rust 
+public struct USD {}
+public struct EUR {}
+
+#[test]
+fun test_phantom_type() {
+    let coin1: Coin<USD> = Coin { value: 10 };
+    let coin2: Coin<EUR> = Coin { value: 20 };
+
+    // Unpacking is identical because the phantom type parameter is not used.
+    let Coin { value: _ } = coin1;
+    let Coin { value: _ } = coin2;
+}
+```
