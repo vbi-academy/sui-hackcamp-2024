@@ -1,0 +1,89 @@
+# abort và assert
+
+Trong bài học ở [control flow](./control_flow), các bạn đã học về `return` kết thúc function. Tuy nhiên ta còn có một lệnh khác là `abort`. 
+
+Khi một hàm dùng lệnh `abort`, nó sẽ dừng ngay lập tức và xóa mọi thay đổi vừa thực hiện. Sau khi dừng thì không thể khôi phục lại được.
+
+Trong Move, một giao dịch chỉ có hai trạng thái: hoặc là thành công hoàn toàn, hoặc là thất bại hoàn toàn. Ví dụ trong Sui, nếu có lỗi xảy ra thì các object sẽ giữ nguyên không đổi. Cách làm này giúp mọi thứ rõ ràng hơn. Khi chương trình dừng đột ngột, bạn không cần lo về việc sửa lại dữ liệu vì chẳng có gì thay đổi cả. Tuy có vẻ đơn giản, nhưng cách này giúp hệ thống an toàn và dễ hiểu hơn.
+Giống như lệnh `return`, bạn có thể dùng `abort` để thoát khỏi hàm khi gặp lỗi. Ví dụ: nếu bạn cần xóa hai phần tử trong một danh sách nhưng danh sách không đủ phần tử, chương trình sẽ dừng ngay lập tức.
+
+Cú pháp: 
+
+```rust 
+// 
+let user_has_access = true;
+
+// abort nếu user_has_access false 
+if (!user_has_access) {
+    abort 0
+};
+
+// user_has_access = true 
+if (user_has_access) {
+   abort(1)
+};
+
+
+// vi du voi vector
+use std::vector;
+
+fun pop_twice<T>(v: &mut vector<T>): (T, T) {
+    if (vector::length(v) < 2) abort 42;
+    (vector::pop_back(v), vector::pop_back(v))
+}
+
+
+//
+
+
+```
+
+## assert 
+Macro assert! là một công cụ đơn giản hơn abort. Nó giúp kiểm tra điều kiện và dừng giao dịch khi cần. Cách dùng rất đơn giản: assert! cần hai thông tin - một điều kiện đúng/sai và một mã lỗi. Khi điều kiện sai, giao dịch sẽ tự động dừng và trả về mã lỗi đó.
+
+Cú pháp
+```Rust
+assert!(condition: bool, code: u64)
+
+//example
+assert!(user_has_access, 0);
+```
+
+Ví dụ này tương đương với cách dùng abort ở trên. Việc dùng `assert!` sẽ giúp code ngắn gọn và dễ đọc hơn. Để thông báo lỗi rõ ràng và có ý nghĩa hơn, người ta thường tạo các `const` để đại diện cho các loại lỗi khác nhau( nếu bạn quên hằng số là gì có thể back lại bài học đầu tiên của section 4):
+```rust
+const ENoAccess: u64 = 0;
+const ENoField: u64 = 1;
+
+public fun update_record(user_has_access: bool, field_exists: bool) {
+    assert!(user_has_access, ENoAccess);
+    assert!(field_exists, ENoField);
+    // ...
+}
+```
+
+assert thường được sử dụng phổ biến hơn so với việc chỉ dùng abort. Các ví dụ về abort ở trên có thể được viết lại bằng cách sử dụng assert
+
+```
+module hack_camp::abort_assert {
+
+    use std::debug;
+    use std::vector;
+    fun pop_twice<T>(v: &mut vector<T>): (T, T) {
+        assert!(vector::length(v) >= 2, 42); // Now uses 'assert'
+        (vector::pop_back(v), vector::pop_back(v))
+    }
+
+    #[test]
+    public fun test_assert(){
+        let mut vec = vector<u64>[1,2,3,4,5];
+
+        let (vec_1, vec_2) = pop_twice(&mut vec);
+        
+        debug::print(&vec_1); // 5
+        debug::print(&vec_2); // 4
+
+    }
+
+
+}
+```
