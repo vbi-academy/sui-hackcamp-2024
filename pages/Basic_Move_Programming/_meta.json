@@ -6,8 +6,6 @@
   "ablities": "Ablities là gì?",
   "Generics_and_phantom": "Generic là gì? ",
   "Enum": "Enum là gì?",
-  "events_and_errors": "events và errors",
-  "unit_tests": "Viết testcase cho Sui move",
   "abort_assert": "Abort và assert?"
 }
   
