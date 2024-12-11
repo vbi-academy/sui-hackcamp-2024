@@ -1,0 +1,297 @@
+# Object là gì ? 
+
+Đơn vị lưu trữ cơ bản trên Sui là object (đối tượng). Khác với nhiều blockchain tập trung vào account chứa key-value store, storage model của Sui xoay quanh các objects, mỗi object có một ID duy nhất để định danh trên chain. Một smart contract là một object mà mọi người biết đó là package. Những smart contract giúp tương tác với các objects:
+
+* Sui Move Package: Một package là tập hợp các đoạn mã (code) có liên quan với nhau. Mỗi code trong package được gọi là module và có tên riêng. Để tìm một module cụ thể, bạn chỉ cần biết ID của package và tên module đó. Khi dev muốn publish smart contract lên Sui, nó tạo thành một package. Sau khi đưa lên, chỉ người có quyền( permissions) mới có thể upgrade package. Các package có thể kết nối và sử dụng lẫn nhau.
+
+* Sui Move Object: Là container dữ liệu được kiểm soát bởi module Move của Sui. Có thể hình dung nó như một Form với nhiều trường khác nhau - aka struct. Các trường này có thể lưu trữ dữ liệu đơn giản (như integer và address), các object khác…
+
+## Object metadata 
+Objects trong Sui có những đặc điểm cơ bản sau:
+- Type: Mỗi object có một kiểu dữ liệu cụ thể định nghĩa object đó là gì và có thể làm gì. Giống như việc bạn không thể dùng chìa khóa ô tô để mở cửa nhà, các object khác type không thể thay thế cho nhau.
+- Unique ID: Mỗi object có một ID riêng biệt, như dấu vân tay vậy. ID này được cấp khi object được tạo ra và không thể thay đổi. Nó giúp theo dõi từng object trong system.
+- Owner: **Mỗi object đều thuộc về một người hoặc object khác đó**. Owner có thể là:
+    - Một tài khoản duy nhất (ví dụ: ví của bạn 0x….)
+    - Được chia sẻ với mọi người trên network ( shared object)
+    - Bị khóa để mọi người chỉ có thể xem nhưng không thể thay đổi (frozen object)
+- Data: Objects chứa thông tin, như một container. Loại thông tin nào có thể chứa và có thể làm gì với nó phụ thuộc vào type của object.
+- Version: Mỗi object theo dõi số lần nó bị thay đổi thông qua version number. Điều này giúp ngăn chặn việc sử dụng cùng một transaction nhiều lần.
+- Digest: Mỗi object có một digets của data. digest này sẽ thay đổi nếu ai đó cố gắng sửa đổi data, giúp bảo mật object và chứng minh data không bị can thiệp.
+
+⇒ Dùng từ đơn giản, một object trong Sui sẽ là container lưu trữ data. Để tạo một object trong Sui move, bạn sẽ cần  tạo `struct`,  struct như một form đơn giản liệt kê những thông tin mà object sẽ lưu trữ. Ví dụ, nếu chúng ta có một struct Sum, nó đơn giản chỉ lưu trữ hai số: number_1 và number_2.
+
+```rust
+struct Sum {
+    number_1: u8,
+    number_2: u8,
+}
+```
+
+Như cái này vẫn chưa gọi là object. Để biến nó thành một object ở Sui, chúng ta cần thêm ability key và ID bằng cách sử dụng sui::object::UID để cung cấp một ID duy nhất cho mỗi đối tượng, giúp định danh đối tượng đó trên mạng  Sui.
+
+```rust 
+use sui::object::UID;
+
+public struct SumObject has key {
+	id: UID,
+	number_1: u8,
+	number_2: u8,
+}
+```
+
+Lưu ý: Tất cả code cần được viết bên trong module khi lập trình Move trên Sui.
+
+## **Create objects**
+
+Bạn đã học cách định nghĩa object trong Move trên Sui. Bây giờ chúng ta sẽ tìm hiểu cách tạo ra object đó. Mặc dù đã học qua rồi, nhưng hãy cùng nhau review phần này vì nó quan trọng.
+
+Để tạo một object, chúng ta cần fill vào tất cả các fields bắt buộc của nó. Mà ở đây field quan trọng đầu tiên là id. Vì điều ta cần cần phải là một mã định danh duy nhất (gọi là UID), chúng ta sử dụng hai module
+1. Module `sui::object`
+2. Module `sui::tx_context`
+
+Hai module này hoạt động cùng nhau để tạo ra một ID mới và duy nhất cho đối tượng. Module sui::object có một hàm new() tạo ra ID bằng cách sử dụng thông tin từ sui::tx_context. Ví dụ: 
+
+```rust
+module sum::sum {
+		use sui::object;
+		use sui::tx_context::TxContext;
+
+		// Defining the SumObject
+		public struct SumObject has key {
+		    id: UID,
+		    number_1: u8,
+		    number_2: u8,
+		}
+		// Constructor function used to iniatlize the SumObject
+		public fun new(num_1: u8, num_2: u8, ctx: &mut TxContext) {
+				SumObject {
+		        id: object::new(ctx),
+		        number_1: num_1,
+				    number_2: num_2,
+		    }
+		}
+}
+```
+
+## Transaction context 
+
+Bạn có thể thắc mắc về tham số `&TxContext` đóng vai trò gì trong ví dụ này đúng không ? Ví dụ minh hoạ là giống bạn cần bột để làm bánh thì bạn cần TxContext mới tạo được objects trong Sui. Không có nó sẽ không được !!! 
+
+**Transaction Context** trong blockchain giống như **một sổ ghi chép thông tin** cho mỗi giao dịch. Để dễ hiểu, nó như một **phiếu ghi thông tin khi bạn gửi tiền ở ngân hàng** - trên đó ghi rõ ai gửi tiền (address của sender), mã số giao dịch( digest) , và thời gian gửi( timestamp). Các thông tin này giúp hệ thống theo dõi và xử lý giao dịch một cách chính xác và an toàn.
+
+TxContext là một phần quan trọng trong Sui - Trong module của tx_context sẽ có `TxContext` nắm giữ các thông tin quan trong khi run transaction. Khi so sánh với các blockchain khác, TxContext của Sui có nhiều tính năng hữu ích hơn. Ngoài việc lưu thông tin cơ bản của giao dịch, nó còn có thể làm những việc đặc biệt như tạo mã ID cho mỗi object. Cấu trúc của  TxContext: 
+
+```rust
+/// sui-framework/sources/tx_context.move
+public struct TxContext has drop {
+    sender: address,           // The address of the current transaction sender
+    tx_hash: vector<u8>,       // The hash of the current transaction
+    epoch: u64,                // The current epoch number
+    epoch_timestamp_ms: u64,   // The timestamp when the epoch started (in milliseconds)
+    ids_created: u64           // The number of new IDs created in the current transaction
+}
+```
+
+Lưu ý⚠ TxContext là một phần đặc biệt mà bạn không thể tự tạo ra. Nó được hệ thống Sui (MoveVM) tự động tạo và gửi vào transaction dưới dạng &mut TxContext. Khi một TxContext được tạo ra, các thông tin bên trong nó như:
+
+- Địa chỉ người gửi
+- Mã giao dịch
+- Và các thông tin khácsẽ không thể thay đổi trong suốt quá trình thực hiện giao dịch. Điều này giúp đảm bảo giao dịch của bạn luôn an toàn và đáng tin cậy..
+
+
+### Các core function trong transaction context
+
+
+```rust
+// Get the sender's address
+public fun sender(self: &TxContext): address {
+    self.sender
+}
+
+// Return the current transaction hash (i.e., transaction digest)
+public fun digest(self: &TxContext): &vector<u8> {
+    &self.tx_hash
+}
+
+// Return the current epoch number
+public fun epoch(self: &TxContext): u64 {
+    self.epoch
+}
+
+public fun epoch_timestamp_ms(self: &TxContext): u64 {
+   self.epoch_timestamp_ms
+}
+
+```
+
+Nếu bạn thắc mắc đoạn code về generate Unique address ở Object thì đó là `fresh_object_address` trong tx_context module: 
+
+```rust
+public fun fresh_object_address(ctx: &mut TxContext): address {
+    let ids_created = ctx.ids_created;
+    let id = derive_id(*&ctx.tx_hash, ids_created);
+    ctx.ids_created = ids_created + 1;
+    id
+}
+```
+
+Nếu bạn muốn dùng các field tương tự như `ids_created` trong đoạn code của bạn thì ở các section sau mình sẽ viết về `bcs`((Binary Canonical Serialization)) module. Ví dụ: 
+
+```rust
+let ctx_bytes = bcs::to_bytes(ctx);
+let bcs_obj = &mut bcs::new(ctx_bytes);
+
+let signer_obj : address = bcs::peel_address(bcs_obj);
+let tx_hash : vector<u8> = bcs::peel_vec_u8(bcs_obj);
+let epoch : u64 = bcs::peel_u64(bcs_obj);
+let ids_created : u64 = bcs::peel_u64(bcs_obj);
+
+```
+
+
+> Đây là challenge nhỏ dành cho bạn. Hãy viết một package `animal`, có object `AnimeObject` với các thuộc tính `name`, `no_of_legs`, và `favorite_food`. Tạo một hàm init và sau đó chuyển quyền sở hữu(ownership sẽ được nói ở bài học tiếp theo) của đối tượng `AnimeObject` cho địa chỉ là `sender`.
+
+hint: 
+```rust
+sui move new animal
+
+---
+public struct AnimeObject {
+    //define ở đây nhé
+}
+
+```
+
+Trong Sui move, bạn chỉ có thể gọi đến object mà bạn sở hữu. Để sử dụng các objects, có hai cách khác nhau để truyền objects dưới dạng tham số: bằng tham chiếu và bằng giá trị: 
+1. `&T`: Chỉ đọc được reference
+2. `&mut T`: Mutable reference
+
+
+Đối với read-only reference,  Tham chiếu chỉ đọc chỉ cho phép bạn đọc dữ liệu của object mà thôi. Nó không cho phép bạn thay đổi hay cập nhật dữ liệu của object đó.
+
+```rust
+module sui_bootcamp::sum {
+		use sui::object;
+		use sui::tx_context::TxContext;
+
+		
+		struct SumObject has key {
+		    id: UID,
+		    number_1: u8,
+		    number_2: u8,
+		}
+
+		// Constructor function used to initialize the SumObject
+		fun new(num_1: u8, num_2: u8, ctx: &mut TxContext): SumObject {
+				SumObject {
+		        id: object::new(ctx),
+		        number_1: num_1,
+				    number_2: num_2,
+		    }
+		}
+
+		// uses the values data of obj to create a new object
+		public entry fun make_copy(obj: &SumObject, ctx: &mut TxContext) {
+				let sum_obj = new(obj.num_1, obj.num_2, ctx);
+				transfer::transfer(sum_obj, tx_context::sender(ctx))
+		}
+}
+```
+
+
+Vậy, tham chiếu có thể thay đổi (mutable reference) là ngược lại với tham chiếu chỉ đọc. Mutable reference cho phép bạn chỉnh sửa dữ liệu trong object và thay đổi giá trị của các trường trong object đó. 
+
+```rust
+// copy_into function uses the properties data of obj_1 (non-mutable)
+public entry fun copy_into(obj_1: &SumObject, obj_2: &mut SumObject, ctx: &mut TxContext) {
+		obj_2.num_1 = obj_1.num_1;
+		obj_2.num_2 = obj_1.num_2;
+		transfer::transfer(obj_2, tx_context::sender(ctx))
+}
+```
+
+Trong ví dụ này, chúng ta có hai đối tượng:
+
+- `obj_1` chỉ có thể đọc (không thể thay đổi)
+- `obj_2` có thể thay đổi được
+1. Lấy giá trị từ `obj_1` và gán cho `obj_2`
+2. Chuyển quyền sở hữu của `obj_2` cho người gửi giao dịch bằng module `transfer`
+
+Lưu ý: Để thực hiện được giao dịch này, người gửi phải sở hữu cả hai đối tượng `obj_1` và `obj_2`. Hàm này được đánh dấu là "entry" để có thể gọi trực tiếp trong giao dịch.
+
+
+Cách khác là truyền trực tiếp giá trị của object vào hàm entry. Khi làm như vậy, object sẽ không nằm trong global storage của Sui: 
+```
+public entry fun update_num_1(num_1: u8, object: SumObject): SumObject {
+			let obj = object;
+			obj.number_1 = num_1;
+			obj
+		}
+```
+
+
+Trong đoạn code này, chúng ta truyền `object` bằng giá trị trực tiếp. Quá trình này gồm 3 bước:
+
+1. Tạo một object mới tên `obj`
+2. Cập nhật giá trị `number_1` của object đó
+3. Trả về object đã được cập nhật
+
+Tuy nhiên, cách này có một vấn đề: Khi truyền object bằng giá trị, hệ thống sẽ tạo một bản sao mới của object trong bộ nhớ. Bản sao này sẽ tồn tại cho đến khi chúng ta tự xóa nó đi. Mà bạn đã học ở bài học về abilities thì UID strct không thẻ có `drop` ability được. Vây có thể làm gì nếu muốn giải phóng bộ nhớ? Để xử lý các objects được truyền bằng giá trị, chúng ta có hai cách:
+* Delete the object
+* Transfer the object
+
+### Đối với delete object 
+
+Để xóa một object, chúng ta không thể xóa nó trực tiếp mà phải tách rời (phân rã) nó thành các phần nhỏ hơn. Quá trình này gọi là "unpacking". Cụ thể, bạn cần:
+
+1. Tách các thành phần của object ra
+2. Lưu chúng vào các biến riêng biệt
+3. Sau đó gán giá trị rỗng cho các biến này
+
+Ví dụ :
+
+```rust 
+// unpack object 
+let SumObject { id, number_1: _, number_2: _ } = object;
+
+
+---
+
+// Defining the SumObject
+struct SumObject has key {
+    id: UID,
+    number_1: u8,
+    number_2: u8,
+}
+
+// delete  object và dùng object::delete để bỏ id đó đi 
+public entry fun delete(object: SumObject) {
+        let ColorObject { id, red: _, green: _, blue: _ } = object;
+object::delete(id);
+}
+
+```
+
+Để xóa một object, chúng ta thực hiện hai bước chính:
+
+1. Đầu tiên, chúng ta tách các giá trị `number_1` và `number_2` ra khỏi object bằng ký hiệu `_`. Ký hiệu này cho phép bỏ qua các giá trị này.
+2. Sau đó, vì không thể xóa trực tiếp trường `id`, chúng ta dùng hàm `object::delete` để xóa `UID` và giải phóng bộ nhớ.
+
+
+Lưu ý📔: Chúng ta không xóa các objects được truyền bằng tham chiếu (reference) - chỉ xóa những objects được truyền bằng giá trị (value). Lý do là:
+
+1. Objects được truyền bằng tham chiếu được lưu trong bộ nhớ toàn cục (global storage). Nếu xóa chúng, chúng ta sẽ mất vĩnh viễn dữ liệu thực tế, điều này không phải là điều chúng ta muốn.
+2. Objects được truyền bằng giá trị thì khác - chúng chỉ là bản copy của object gốc. Khi đã sử dụng xong các bản sao này, việc dọn dẹp chúng là cần thiết để giải phóng không gian bộ nhớ.
+
+
+### **Transfer the object**
+
+Một cách khác để xử lý object là chuyển quyền sở hữu của nó cho một chủ sở hữu khác. Để làm điều này, chúng ta cần định nghĩa hàm `transfer`.
+
+```rust
+public entry fun transfer(object: SumObject, recipient: address) {
+    transfer::transfer(object, recipient)
+}
+
+```
+
