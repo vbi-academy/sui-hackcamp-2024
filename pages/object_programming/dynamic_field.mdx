@@ -1,0 +1,328 @@
+# Dynamic Fields là gì? 
+
+Khi làm việc với object fields trong Sui, bạn thường dùng chúng để lưu trữ dữ liệu primitive hoặc wrap các objects khác. Tuy nhiên, cách tiếp cận này có một số hạn chế:
+
+1. **Cấu trúc cố định:** Objects có một tập fields cố định được xác định bởi định nghĩa `struct` khi module được publish. Điều này làm giảm tính linh hoạt.
+2. **Giới hạn kích thước:** Việc wrap nhiều objects có thể dẫn đến objects có kích thước lớn, làm tăng phí giao dịch.
+3. **Collections đồng nhất:** Kiểu `vector` trong Move chỉ hỗ trợ một kiểu dữ liệu duy nhất, khiến nó không phù hợp để lưu trữ các collections có nhiều kiểu khác nhau.
+
+SUI giải quyết những vấn đề này với dynamic fields, cho phép thêm và xóa fields một cách linh động. Các fields này có thể có tên tùy ý và chỉ tính phí gas khi được truy cập. Chúng cũng có khả năng lưu trữ các giá trị không đồng nhất.
+
+
+## Vây Fields và Object Fields khác nhau như thế nào trong Dynamic object ? 
+
+Có hai loại dynamic field - "fields" và "object fields" - khác nhau về cách lưu trữ giá trị:
+
+- **Fields** có thể lưu trữ bất kỳ giá trị nào có khả năng `store`. Tuy nhiên, object được lưu trong loại field này sẽ bị wrapped và không thể truy cập thông qua ID bởi các công cụ bên ngoài (explorer, wallet, v.v.) khi truy cập storage.
+- **Object fields** *bắt buộc* phải là objects (có khả năng `key` và trường `id: UID` ở vị trí đầu tiên), nhưng vẫn có thể truy cập thông qua ID bởi các công cụ bên ngoài.
+
+Các modules để tương tác với các fields này có thể được tìm thấy tại module dynamic_field và dynamic_object_field.
+
+Khác với object fields thông thường chỉ chấp nhận định danh Move, tên của dynamic fields có thể là bất kỳ giá trị nào hỗ trợ các khả năng copy, drop, và store. Điều này bao gồm tất cả các kiểu dữ liệu nguyên thủy của Move như số nguyên, Boolean, chuỗi bytes, cũng như các struct..
+
+Bạn sẽ sử dụng module `sui::dynamic_field`. Struct Field dùng hai kiểu dữ liệu chung (generics) là Name và Value để lưu thông tin của dynamic field. 
+
+Name dùng để lưu tên, còn Value dùng để lưu giá trị. Cách thiết kế này cho phép bạn thêm các field mới một cách linh hoạt, không cần khai báo sẵn. Mỗi field được tạo ra sẽ có một mã định danh (ID) riêng biệt trên toàn hệ thống, giúp nó có thể được lưu trữ trong bộ nhớ chung.
+
+```rust 
+/// Internal object used for storing the field and value
+public struct Field<Name: copy + drop + store, Value: store> has key {
+    /// Determined by the hash of the object ID, the field name value and it's type,
+    /// i.e. hash(parent.id || name || Name)
+    id: UID,
+    /// The value for the name of this field
+    name: Name,
+    /// The value bound to this field
+    value: Value,
+}
+```
+
+Như định nghĩa trên cho thấy, dynamic fields được lưu trong một object Field , với UID được tạo ra một cách xác định dựa vào ID của object, tên field và kiểu của field đó. Object Field chứa tên field và giá trị được gắn với nó. Các ràng buộc trên tham số kiểu Name và Value xác định các abilities (khả năng) mà key và value phải có.
+
+Ví dụ: Giả sử mình muốn add thêm nhiều attributes cho laptop này trong future nhưng chưa biết những thuộc tính sau này là gì. Mình không thể define một struct được. Dynamic Fields chính là solution - bạn không cần biết trước tất cả các trường dữ liệu mà bạn muốn thêm vào một object khi sử dụng dynamic fields!
+
+
+```rust 
+public struct Laptop has key {
+    id: UID,
+    screen_size: u64,
+    model: u64,
+}
+```
+
+
+## Core Functions
+
+Adding a Dynamic Field (`add`): Hàm này thêm một dynamic field vào object. Nếu field đã tồn tại, nó sẽ throw lỗi EFieldAlreadyExists. I Implementation logic của add function  sẽ call đến `to_address` để lấy object address. Sau đó sẽ generate một unique hash dựa vào tham số object's address và field name. Cuối cùng dùng `add_child_object`: 
+
+Đây là code `add` function từ module: 
+
+```rust 
+public fun add<Name: copy + drop + store, Value: store>(
+    object: &mut UID,
+    name: Name,
+    value: Value,
+) {
+    let object_addr = object.to_address();
+    let hash = hash_type_and_key(object_addr, name);
+    assert!(!has_child_object(object_addr, hash), EFieldAlreadyExists);
+    let field = Field {
+        id: object::new_uid_from_hash(hash),
+        name,
+        value,
+    };
+    add_child_object(object_addr, field)
+}
+```
+
+Như vậy để để thêm dynamic fields vào một object, bạn cần mutable tham chiếu (reference) có thể thay đổi tới object đó. Lưu ý rằng với các owned objects, chỉ có owner mới có thể gửi transactions sử dụng mutable/immutable references hoặc giá trị của object. Còn shared objects thì ai cũng có thể thay đổi. Việc thêm dynamic field được thực hiện đơn giản thông qua hàm `dynamic_field::add` với id của object (dạng mutable), key và value.
+
+`add` cho ví dụ trên: 
+
+```rust
+use sui::dynamic_field;
+
+public fun add_attribute(laptop: &mut Laptop, name: String, value: u64) {
+    dynamic_field::add(&mut laptop.id, name, value);
+}
+
+```
+
+
+Borrowing a Dynamic Field: (borrow): Hàm này cho phép mượn (borrow) một dynamic field từ object nhưng chỉ để đọc (immutable). Nếu field không tồn tại hoặc kiểu dữ liệu không khớp, nó sẽ abort với lỗi tương ứng. 
+
+```rust 
+public fun borrow<Name: copy + drop + store, Value: store>(
+    object: &UID,
+    name: Name,
+): &Value {
+    let object_addr = object.to_address();
+    let hash = hash_type_and_key(object_addr, name);
+    let field = borrow_child_object<Field<Name, Value>>(object, hash);
+    &field.value
+}
+```
+
+Ví dụ: 
+```
+public fun read_image_url(laptop: &Laptop, name: String): String {
+    let sticker_name = StickerName { name };
+    let sticker_reference: &Sticker = dynamic_field::borrow(&laptop.id, sticker_name);
+    sticker_reference.image_url
+}
+
+```
+
+Mượn Dynamic Field để thay đổi (borrow_mut): Hàm này tương tự như borrow, nhưng cho phép mượn dynamic field để chỉnh sửa giá trị bằng cách sử dụng hàm borrow_child_object_mut.
+
+```rust
+public fun borrow_mut<Name: copy + drop + store, Value: store>(
+    object: &mut UID,
+    name: Name,
+): &mut Value {
+    let object_addr = object.to_address();
+    let hash = hash_type_and_key(object_addr, name);
+    let field = borrow_child_object_mut<Field<Name, Value>>(object, hash);
+    &mut field.value
+}
+```
+
+Áp dụng cho ví dụ trên với borrow_mut: 
+
+```rust 
+public fun set_image_url(laptop: &mut Laptop, name: String, new_url: String) {
+    let sticker_name = StickerName { name };
+    let sticker_mut_reference: &mut Sticker = dynamic_field::borrow_mut(&mut laptop.id, sticker_name);
+    
+    sticker_mut_reference.image_url = new_url;
+}
+
+```
+
+Remove Dynamic Field (remove): Hàm này xóa một dynamic field khỏi object và trả về giá trị của nó. Nếu field không tồn tại hoặc kiểu dữ liệu không khớp, hàm sẽ bị abort với lỗi tương ứng. 
+```
+public fun remove<Name: copy + drop + store, Value: store>(
+    object: &mut UID,
+    name: Name,
+): Value {
+    let object_addr = object.to_address();
+    let hash = hash_type_and_key(object_addr, name);
+    let Field { id, name: _, value } = remove_child_object<Field<Name, Value>>(object_addr, hash);
+    id.delete();
+    value
+}
+```
+
+Bạn cũng có thể xóa một dynamic field đã tồn tại bằng cách truyền vào mutable reference của object và key:
+
+```rust 
+public fun remove_sticker(laptop: &mut Laptop, name: String) {
+    let sticker_name = StickerName { name };
+    
+    dynamic_field::remove(&mut laptop.id, sticker_name);
+}
+```
+
+
+
+## Sample code : 
+
+Ví dụ code dùng dynamic fields trong Sui Move để mở rộng một object. 
+
+Mình sẽ định nghĩa hai struct **Student** và **Course**, rồi dùng phương thức `dynamic_field::add` để thêm một `Course` như một dynamic field vào instance `Student`, đại diện cho các khóa học mà sinh viên đã đăng ký. 
+
+Sau đó, sửa tên khóa học bằng `dynamic_field::borrow_mut`,  cuối cùng là xóa field bằng `dynamic_field::remove`, và cuối cùng dùng assert! để kiểm tra sự tồn tại của field trước khi destroy object…
+
+
+```rust 
+module hack_camp::dynamic {
+
+    use std::string::String;
+    use std::debug;
+    use sui::dynamic_object_field as ofield;
+    use sui::dynamic_field as field;
+    use sui::tx_context::{Self, sender};
+
+    use sui::borrow;
+
+    public struct Student has key {
+        id: UID,
+    }
+
+
+    public struct Course has  store {
+        name: String,
+        score: u8,
+    }
+
+    public fun create_student(ctx: &mut TxContext): Student{
+        Student {id: object::new(ctx)}
+    }
+
+    //Modify the name of the course
+    public fun modify_name(student: &mut Student, name: String ,ctx: &mut TxContext){
+        assert!(field::exists_(&student.id, b"course"), 0);
+        
+        let course: &mut Course = field::borrow_mut(&mut student.id, b"course");
+        course.name = name;
+    }
+
+    // Remove the course from the student
+    public fun remove_student(student: &mut Student,  ctx: &mut TxContext){ 
+        let course: Course = field::remove(&mut student.id, b"course");
+
+        let Course  { name  , score} = course;
+    }
+   
+
+    fun init(ctx: &mut TxContext){
+        let mut student = create_student(ctx);
+
+        field::add(
+            &mut student.id,
+            b"course",
+            Course {
+                name: b"sui move".to_string(),
+                score: 100u8,
+            }
+        );
+        transfer::share_object(student);
+      
+    }
+}
+```
+
+
+
+```
+sui client object 0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff
+
+╭───────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ objectId      │  0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff                                                                                  │
+│ version       │  268743581                                                                                                                                           │
+│ digest        │  8Ucv4R5gumGD3YprSJDucC3SDjDtqq9AfQenWk5mXzjr                                                                                                        │
+│ objType       │  0x2::dynamic_field::Field<vector<u8>, 0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d::dynamic::Course>                          │
+│ owner         │ ╭─────────────┬──────────────────────────────────────────────────────────────────────╮                                                               │
+│               │ │ ObjectOwner │  0x1f42983050897772ffede4d2367f05ee7c31082045969a33b48a0efb466b4179  │                                                               │
+│               │ ╰─────────────┴──────────────────────────────────────────────────────────────────────╯                                                               │
+│ prevTx        │  2ptMDAZaCJ4XQnhRty6RutNS78UaUeehNRUdSuZbvXj8                                                                                                        │
+│ storageRebate │  1846800                                                                                                                                             │
+│ content       │ ╭───────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│               │ │ dataType          │  moveObject                                                                                                                  │ │
+│               │ │ type              │  0x2::dynamic_field::Field<vector<u8>, 0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d::dynamic::Course>  │ │
+│               │ │ hasPublicTransfer │  false                                                                                                                       │ │
+│               │ │ fields            │ ╭───────┬────────────────────────────────────────────────────────────────────────────────────────────────────╮               │ │
+│               │ │                   │ │ id    │ ╭────┬──────────────────────────────────────────────────────────────────────╮                      │               │ │
+│               │ │                   │ │       │ │ id │  0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff  │                      │               │ │
+│               │ │                   │ │       │ ╰────┴──────────────────────────────────────────────────────────────────────╯                      │               │ │
+│               │ │                   │ │ name  │ ╭───────╮                                                                                          │               │ │
+│               │ │                   │ │       │ │  99   │                                                                                          │               │ │
+│               │ │                   │ │       │ │  111  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  117  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  114  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  115  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  101  │                                                                                          │               │ │
+│               │ │                   │ │       │ ╰───────╯                                                                                          │               │ │
+│               │ │                   │ │ value │ ╭────────┬───────────────────────────────────────────────────────────────────────────────────────╮ │               │ │
+│               │ │                   │ │       │ │ type   │  0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d::dynamic::Course  │ │               │ │
+│               │ │                   │ │       │ │ fields │ ╭───────┬────────────╮                                                                │ │               │ │
+│               │ │                   │ │       │ │        │ │ name  │  sui move  │                                                                │ │               │ │
+│               │ │                   │ │       │ │        │ │ score │  100       │                                                                │ │               │ │
+│               │ │                   │ │       │ │        │ ╰───────┴────────────╯                                                                │ │               │ │
+│               │ │                   │ │       │ ╰────────┴───────────────────────────────────────────────────────────────────────────────────────╯ │               │ │
+│               │ │                   │ ╰───────┴────────────────────────────────────────────────────────────────────────────────────────────────────╯               │ │
+│               │ ╰───────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰───────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+
+
+Thay đổi tên 
+```
+sui client call --package 0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d --module dynamic --function modify_name --args 0x1f42983050897772ffede4d2367f05ee7c31082045969a33b48a0efb466b4179 "sui bootcamp 2024" --gas-budget 100000000
+```
+
+
+
+
+
+```
+Sui client object 0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff
+
+╭───────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ objectId      │  0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff                                                                                  │
+│ version       │  268743582                                                                                                                                           │
+│ digest        │  HaUxDG4QqDGYNXCqRJiqS5pFfGkPguikncmhexv2Tfp9                                                                                                        │
+│ objType       │  0x2::dynamic_field::Field<vector<u8>, 0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d::dynamic::Course>                          │
+│ owner         │ ╭─────────────┬──────────────────────────────────────────────────────────────────────╮                                                               │
+│               │ │ ObjectOwner │  0x1f42983050897772ffede4d2367f05ee7c31082045969a33b48a0efb466b4179  │                                                               │
+│               │ ╰─────────────┴──────────────────────────────────────────────────────────────────────╯                                                               │
+│ prevTx        │  HXvjHEEf5MmqLHNaGQxFQ997LdLXA37gnUmihzA3iWfA                                                                                                        │
+│ storageRebate │  1915200                                                                                                                                             │
+│ content       │ ╭───────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│               │ │ dataType          │  moveObject                                                                                                                  │ │
+│               │ │ type              │  0x2::dynamic_field::Field<vector<u8>, 0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d::dynamic::Course>  │ │
+│               │ │ hasPublicTransfer │  false                                                                                                                       │ │
+│               │ │ fields            │ ╭───────┬────────────────────────────────────────────────────────────────────────────────────────────────────╮               │ │
+│               │ │                   │ │ id    │ ╭────┬──────────────────────────────────────────────────────────────────────╮                      │               │ │
+│               │ │                   │ │       │ │ id │  0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff  │                      │               │ │
+│               │ │                   │ │       │ ╰────┴──────────────────────────────────────────────────────────────────────╯                      │               │ │
+│               │ │                   │ │ name  │ ╭───────╮                                                                                          │               │ │
+│               │ │                   │ │       │ │  99   │                                                                                          │               │ │
+│               │ │                   │ │       │ │  111  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  117  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  114  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  115  │                                                                                          │               │ │
+│               │ │                   │ │       │ │  101  │                                                                                          │               │ │
+│               │ │                   │ │       │ ╰───────╯                                                                                          │               │ │
+│               │ │                   │ │ value │ ╭────────┬───────────────────────────────────────────────────────────────────────────────────────╮ │               │ │
+│               │ │                   │ │       │ │ type   │  0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d::dynamic::Course  │ │               │ │
+│               │ │                   │ │       │ │ fields │ ╭───────┬─────────────────────╮                                                       │ │               │ │
+│               │ │                   │ │       │ │        │ │ name  │  sui bootcamp 2024  │                                                       │ │               │ │
+│               │ │                   │ │       │ │        │ │ score │  100                │                                                       │ │               │ │
+│               │ │                   │ │       │ │        │ ╰───────┴─────────────────────╯                                                       │ │               │ │
+│               │ │                   │ │       │ ╰────────┴───────────────────────────────────────────────────────────────────────────────────────╯ │               │ │
+│               │ │                   │ ╰───────┴────────────────────────────────────────────────────────────────────────────────────────────────────╯               │ │
+│               │ ╰───────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰───────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
