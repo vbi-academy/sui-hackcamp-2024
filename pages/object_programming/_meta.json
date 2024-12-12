@@ -2,9 +2,11 @@
   "Intro_object_centric_design": "Object centric Model",
   "what_is_object": "Object là gì",
   "capability_pattern": "Capability pattern là gì ?",
+  "Module_Initializers": "Module Initializers là gì ",
   "object_ownership": "object ownership",
   "Object_wrapping": "Object wrapping",
   "dynamic_field": "Dynamic Fields là gì?",
+  "One_timewitness": "One time witness là gì ?",
   "events": "Event là gì? ",
   "unit_tests": "Cách viết testing cho contract"
 }

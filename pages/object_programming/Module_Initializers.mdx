@@ -1,0 +1,115 @@
+# Module Initializers là gì ? 
+
+
+Khi viết smart contract, bạn sẽ thấy có một hàm đặc biệt tên là `init()`. Hôm nay chúng ta sẽ tìm hiểu về **Module initializers** (hàm khởi tạo module).
+
+Như đã học trong phần Object-centric, các module Sui Move được lưu trữ trên Sui Storage. Mỗi module có thể có một hàm khởi tạo đặc biệt. Hàm này:
+
+- Chỉ chạy một lần duy nhất khi module được published
+- Dùng để thiết lập các **dữ liệu ban đầu** cho module (ví dụ:  ta tạo các singleton object trước)
+
+Để hàm khởi tạo này hoạt động được, nó cần có một số điều kiện quan trọng:
+
+- tên hàm là `init`
+- Một tham số phải có là `&mut TxContext`
+- Khống có giá trị trả về ( return values)
+- private ( tất nhiên rồi)
+- Optional Parameter: Sẽ có thêm tham số one-time witness của module ( bạn sẽ được học ở các bài học tiếp theo)
+
+Để hàm khởi tạo này hoạt động được, nó cần có một số điều kiện quan trọng:
+
+- tên hàm là `init`
+- Một tham số phải có là `&mut TxContext`
+- Khống có giá trị trả về ( return values)
+- private ( tất nhiên rồi)
+- Optional Parameter: Sẽ có thêm tham số one-time witness của module ( bạn sẽ được học ở các bài học tiếp theo)
+
+Để hàm khởi tạo này hoạt động được, nó cần có một số điều kiện quan trọng:
+
+- tên hàm là `init`
+- Một tham số phải có là `&mut TxContext`
+- Khống có giá trị trả về ( return values)
+- private ( tất nhiên rồi)
+- Optional Parameter: Sẽ có thêm tham số one-time witness của module ( bạn sẽ được học ở các bài học tiếp theo)
+
+Đây là ví dụ: 
+
+```tsx
+module sui_bootcamp::hackcamp {
+
+    use std::string::{Self, String};
+
+    public struct Student has key {
+        id: UID,
+        name: String,
+    }
+
+    fun init(ctx: &mut TxContext){
+        let student = Student {
+            id: object::new(ctx),
+            name: string::utf8(b"Sui bootcamp 2024 - 2025"),
+        };
+
+        transfer::transfer(student, tx_context::sender(ctx));
+    }
+}
+
+```
+
+Sẽ có một số câu hỏi mà bạn thắc mắc về init như là:
+
+
+> Hàm init có bắc buộc khi tạo object mới để bảo mật không ? 
+
+Mặc dù hàm init rất hữu ích để tạo các object ban đầu hoặc thiết lập trạng thái module, nhưng cần lưu ý rằng các hàm khác trong module vẫn có thể tạo ra những object tương tự. Do đó, hàm init là nơi tốt để thiết lập trạng thái ban đầu nhưng không nên chỉ dựa vào nó như một biện pháp bảo mật duy nhất.
+
+
+> Vậy Hàm init trong Move có giống hàm main trong các ngôn ngữ khác không?
+
+Để hiểu rõ hơn, mình sẽ so sánh hàm `init` trong Move với hàm `main` trong các ngôn ngữ lập trình thông thường nhé.
+
+1. Về **mục đích** của 2 hàm thì Hàm `main` giống như manager cửa hàng vậy - họ có mặ**t mỗi ngày để điều hành hoạt động**. Còn hàm `init` giống như **buổi khai trương** - **chỉ diễn ra một lần duy nhất khi mở cửa hàng mới**, để **chuẩn bị mọi thứ sẵn sàng.**
+2. Về execution time : Hàm `main` sẽ chạy mỗi lần bạn mở application, giống như việc **mở cửa hàng mỗi ngày**. Còn hàm `init` chỉ **chạy đúng một lần khi module được đưa lên blockchain** - sau đó thì.. làm gì còn sau đó =)) 
+3. Về kết quả trả về( return values) : Hàm `main` có thể trả về **kết quả để báo là chương trình chạy ổn hay không.** Còn hàm `init` thì **không cần trả về gì cả, nó chỉ âm thầm setup mọi thứ thôi.** 
+4. Access : Hàm `main` như **cửa chính của tòa nhà vậy - ai cũng có thể vào**. **Còn hàm `init` giống như căn phòng riêng của module** - chỉ module đó mới được dùng, không ai khác có thể gọi trực tiếp.
+
+⇒ như vậy thì vai trò của 2 hàm này khác nhau nhiều. Hàm `init` chỉ lo việc setup ban đầu cho module, còn hàm `main` thì phụ trách việc chạy toàn bộ chương trình.
+
+
+# Practice nhé !!! 
+Dựa trên nội dung đã học, đây là một challenge để bạn luyện tập thêm nhé: **Quản lý Thư viện**
+
+Hãy tạo một module quản lý thư viện với các yêu cầu sau:
+
+1. Tạo một struct LibraryCard có các trường:
+- id: UID
+- name: String
+- book_count: u64 (số sách đã mượn)
+1. Tạo một struct AdminCapability để quản lý thư viện
+2. Viết hàm init để:
+- Tạo AdminCapability và chuyển nó cho người publish contract
+- Tạo LibraryCard đầu tiên với tên "Library System" và chuyển nó cho người deploy
+
+Dưới đây là template để bắt đầu:
+
+```
+module examples::library {
+    use sui::object::{Self, UID};
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use std::string::{Self, String};
+
+    struct LibraryCard has key {
+        // Todo: điền các trường
+    }
+
+    struct AdminCapability has key {
+        // Todo: điền các trường
+    }
+
+    fun init() {
+	       
+    }
+}
+
+```
