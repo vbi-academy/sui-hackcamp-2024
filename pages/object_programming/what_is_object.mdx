@@ -156,20 +156,6 @@ let ids_created : u64 = bcs::peel_u64(bcs_obj);
 ```
 
 
-> Đây là challenge nhỏ dành cho bạn. Hãy viết một package `animal`, có object `AnimeObject` với các thuộc tính `name`, `no_of_legs`, và `favorite_food`. Tạo một hàm init và sau đó chuyển quyền sở hữu(ownership sẽ được nói ở bài học tiếp theo) của đối tượng `AnimeObject` cho địa chỉ là `sender`.
-
-hint: 
-```rust
-sui move new animal
-
----
-public struct AnimeObject {
-    //define ở đây nhé
-}
-
-```
-
-
 ## Cách sử dụng object 
 
 Trong Sui move, bạn chỉ có thể gọi đến object mà bạn sở hữu. Để sử dụng các objects, có hai cách khác nhau để truyền objects dưới dạng tham số: 
@@ -207,7 +193,7 @@ module sui_bootcamp::sum {
 
 		// uses the values data of obj to create a new object
 		public entry fun make_copy(obj: &SumObject, ctx: &mut TxContext) {
-				let sum_obj = new(obj.num_1, obj.num_2, ctx);
+				let sum_obj = new(obj.number_1, obj.number_2, ctx);
 				transfer::transfer(sum_obj, tx_context::sender(ctx))
 		}
 }
@@ -243,11 +229,18 @@ Khi làm như vậy, object sẽ không nằm trong `global storage` của Sui
 Ví dụ: 
 
 ```rust
-public entry fun update_num_1(num_1: u8, object: SumObject): SumObject {
-			let obj = object;
-			obj.number_1 = num_1;
-			obj
-		}
+public entry fun update_num_1(num_1: u8, sumObject: SumObject): SumObject {
+		let mut obj = sumObject;
+		obj.number_1 = num_1;
+		obj
+
+}
+```
+
+Issue: 
+
+```bash
+The type 'sum::sum::SumObject' does not have the ability 'drop'
 ```
 
 
@@ -281,9 +274,8 @@ Ví dụ :
 ```rust 
 // unpack object 
 let SumObject { id, number_1: _, number_2: _ } = object;
-
-
 ---
+
 
 // Defining the SumObject
 struct SumObject has key {
@@ -293,12 +285,14 @@ struct SumObject has key {
 }
 
 // delete  object và dùng object::delete để bỏ id đó đi 
-public entry fun delete(object: SumObject) {
-        let ColorObject { id, red: _, green: _, blue: _ } = object;
-object::delete(id);
+public entry fun delete(sumObject: SumObject) {
+    let SumObject { id, number_1: _, number_2: _ } = sumObject;
+	object::delete(id);
 }
 
 ```
+Link code: https://docs.sui.io/references/framework/sui-framework/object#0x2_object_delete
+
 
 Để xóa một object, chúng ta thực hiện hai bước chính:
 
@@ -322,4 +316,7 @@ public entry fun transfer(object: SumObject, recipient: address) {
 }
 
 ```
+
+Link code: https://docs.sui.io/references/framework/sui-framework/transfer#0x2_transfer_transfer
+
 
