@@ -11,3 +11,115 @@ Nếu dùng nghĩ tiếng việt thì `witness` đồng nghĩa với từ `proof
 > Witness is a pattern of proving an existence by constructing a proof. In the context of programming, witness is a way to prove a certain property of a system by providing a value that can only be constructed if the property holds.
 
 Witness là một **cơ chế xác thực** trong lập trình. Giống như lúc bạn xuất trình CCCD cho anh áo vàng, nó chứng minh bạn đúng là người lái xe đó. Trong code, chúng ta dùng witness để xác thực tính hợp lệ của một đối tượng bằng cách tạo ra một giá trị đặc biệt - giá trị này chỉ tồn tại khi điều chúng ta cần chứng minh là đúng.
+
+
+## Cốt lõi của  witness pattern 
+
+là sử dụng các giá trị cụ thể để chứng minh tính xác thực của một số thuộc tính nhất định. Trong Move, mẫu này sử dụng các cấu trúc và hàm được cung cấp bởi các module để đảm bảo rằng chỉ có module định nghĩa mới có thể tạo ra các thể hiện của các kiểu cụ thể.
+
+Đây là ví dụ: 
+
+```rust
+module sui_bootcamp::witness {
+
+    // struct    
+    public struct Instance<T> { t: T }
+
+    /// Creates a new instance of `Instance<T>` using the provided T.
+    public fun new<T>(witness: T): Instance<T> {
+        Instance { t: witness }
+    }
+}
+```
+
+Hinh dung `Instance<T>` là một struct generic cần có witness để tạo ra. Khi Hàm new nhận một witness kiểu T và trả về một instance của `Instance<T>`. Nó sẽ chỉ khi cung cấp một instance của kiểu T thì mới có thể gọi new để tạo ra `instance<T>` tương ứng.
+
+Lấy ví dụ cụ thể hơn: 
+
+```rust 
+module sui_bootcamp::witness_source {
+
+    // import tu module tren 
+    use book::witness::{Self, Instance};
+
+    /// Structure used as a witness.
+    public struct W {}
+
+    /// Creates a new instance of `Instance<W>`.
+    public fun new_instance(): Instance<W> {
+        witness::new(W {})
+    }
+}
+```
+
+W struct là một cấu trúc được định nghĩa trong module book::witness_source. Thông qua hàm new_instance , module tạo và truyền một instance của W để sinh ra một `Instance<W>`. với cái này sẽ chứng minh  quyền sở hữu của book::witness_source of W.
+
+Như vậy có thể hiểu là ứng dụng quan trọng của witness pattern trong Move là việc giới hạn khả năng tạo ra các kiểu generic.  
+
+## One-time Witness là gì ? 
+
+Trong nội dung này, Mình sẽ tập trung vào one-time witness, đây thực ra là một design pattern mà chúng ta đã dùng khi làm task 2. One-time witness được sử dụng trong những trường hợp cần đảm bảo một số loại instance chỉ được tạo ra một lần duy nhất, để đảm bảo tính độc nhất của struct đó.
+
+One-time witness (OTW) là một loại witness đặc biệt chỉ có thể được sử dụng một lần duy nhất. Nó không thể được tạo ra một cách thủ công và mỗi module chỉ có một instance. Một type được Sui system xem là OTW khi nó thỏa mãn các rule sau:
+
+* Chỉ có capability drop.
+* Không có fields nào.
+* Không phải là generic type
+* Tên sẽ là giống với tên module và  phải viết hoa toàn bộ
+
+Đây là ví dụ: 
+
+```rust
+module sui_bootcamp::one_time {
+  
+    /// Only `drop`, no fields, no generics, all uppercase.
+    public struct ONE_TIME has drop {}
+
+    /// Receive the instance of `ONE_TIME` as the first argument.
+    fun init(otw: ONE_TIME, ctx: &mut TxContext) {
+        // do something with the OTW
+    }
+}
+```
+
+OTW không thể được tạo ra một cách thủ công, và bất kỳ code nào cố gắng làm vậy sẽ gặp lỗi compiler. Thứ hai là OTW chỉ có thể được nhận như là tham số đầu tiên của module initializer (hàm init). Vì hàm init chỉ được gọi một lần duy nhất cho mỗi module, nên OTW được đảm bảo chỉ được khởi tạo một lần.
+
+Lấy ví dụ trong task 2, mình tạo coin: 
+```rust 
+public struct MY_COIN has drop {}
+```
+
+Cấu trúc trên nó đáp ứng với ont time witness rules trên và đó là định nghĩa về OTW. 
+
+Đây là ví dụ khi mình tạo coin: 
+
+```rust
+
+
+fun init(witness: MY_COIN, ctx: &mut TxContext) {
+				let (treasury, metadata) = coin::create_currency(
+					witness,
+					6,
+					b"MOON",
+				    b"CTIANMING_MY_COIN",
+			   	    b"MOON_COIN",
+					option::none(),
+					ctx);
+				debug::print(&string(b"init MY_COIN"));
+				transfer::public_freeze_object(metadata);
+				transfer::public_transfer(treasury, ctx.sender())
+		}
+```
+
+
+Chúng ta đã truyền MY_COIN để làm tham số witness. Hàm `create_currency` sẽ tạo một currency mới là T và trả về TreasuryCap sau khi call. Hàm này chỉ chạy một lần duy nhất. Như vậy, one-time witness đảm bảo rằng `MY_COIN` chỉ có một `TreasuryCap` duy nhất, điều này rất quan trọng cho việc kiểm soát quyền truy cập( access control).
+
+Nếu bạn thắc mắc là: 
+> Tại sao chỉ có một One-time Witness? 
+
+Lấy ví dụ về MY_COIN, nó chỉ có  drop abilities, điều này có nghĩa là nó sẽ tự động bị hủy khi kết thúc.  Khi chúng ta gọi create_currency sử dụng nó mà không có xử lý thêm nào khác, nó đã tự động bị hủy sau đó và không ai có thể sử dụng lại nó.
+Nói cách khác, nó là duy nhất và chỉ được sử dụng một lần.
+
+Một điều nữa để kiểm tra type đó có phải là OTW không bạn có thể dùng lệnh sau: 
+
+Bạn có thể dùng `types::is_one_time_witness(&witness)` để kiểm tra xem witness được truyền vào có phải là OTW hay không?

@@ -1,0 +1,152 @@
+# UID, ID và Address
+
+Trong Sui Move, UID, ID và Address là ba khái niệm có mối liên hệ chặt chẽ và dễ gây nhầm lẫn. Bài viết này sẽ làm rõ sự khác biệt và mối quan hệ giữa chúng thông qua việc phân tích module Sui::Object.
+
+Đầu tiên, Address là một trong những kiểu dữ liệu cơ bản trong Sui Move, có độ dài 32 bytes, được dùng để định danh địa chỉ duy nhất của các tài khoản hoặc objects trên blockchain ( mình đã viết về 2 bài viết address ở section 3 và address type ở section 4) 
+
+Đây là ví dụ address: 
+
+```rust
+public struct ID has copy, drop, store {
+    bytes: Address
+}
+
+```
+
+ID là một struct bao bọc kiểu dữ liệu Address và có các tính năng copy và store, cho phép nó được lưu trữ trên chain. Tuy nhiên, ID không thể được dùng để định danh các object duy nhất vì nóchỉ  có tính năng copy, nghĩa là bất kỳ ai cũng có thể sao chép một ID với cùng một Address, và nó có thể bị hủy bỏ tùy ý.
+
+```rust 
+public struct UID has store {
+    id: ID,
+}
+
+```
+
+UID wrap ID và không thể copy hay xóa tùy ý (chỉ có thể xóa bằng cách gọi hàm object::delete()). Khác với ID, UID chỉ có thể được tạo bởi transaction context ctx (thông qua hàm object::new(ctx)). Vì vậy, nó có thể định danh một object một cách duy nhất.
+
+Nói một cách khác: 
+
+UID là một cách đặc biệt để bọc (wrap) ID trong Sui. Nó được sử dụng để nhận diện các tài nguyên và objects trong hệ thống. ID có cấu trúc rất đơn giản - nó chỉ chứa một địa chỉ (address). Điểm quan trọng cần nhớ là: mặc dù UID luôn chứa một ID bên trong, nhưng ID có thể tồn tại riêng biệt và thường được dùng cho những tài nguyên không cần phải là duy nhất.
+
+
+## Tạo UID
+Trong module sui::object, UID có thể được tạo thông qua hàm new, hàm này sử dụng module sui::tx_context.
+
+
+```rust
+module sui::object {
+
+use sui::tx_context;
+
+/// Create a new UID
+    public fun new(ctx: &mut tx_context::TxContext): UID {
+        UID { id: tx_context::fresh_object_address(ctx) }
+    }
+}
+
+```
+
+Trong `sui::tx_context`, hàm fresh_object_address tạo một ID duy nhất mới bằng cách gọi hàm derive_id. 
+
+Quá trình này sử dụng **hash** của giao dịch (tx_hash) và số lượng ID đã tạo (ids_created) để đảm bảo tính duy nhất cho mỗi ID. Biến **ids_created** tăng lên sau mỗi lần tạo object, vì vậy kể cả khi nhiều object được tạo trong cùng một giao dịch thì cũng không xảy ra xung đột ID. Cách triển khai như sau:
+
+
+```rust
+module sui::tx_context {
+
+    public fun fresh_object_address(ctx: &mut TxContext): address {
+        let ids_created = ctx.ids_created;
+        let id = derive_id(*&ctx.tx_hash, ids_created);
+        ctx.ids_created = ids_created + 1;
+        id
+    }
+
+    /// Native function for deriving an ID via hash(tx_hash || ids_created)
+    native fun derive_id(tx_hash: vector<u8>, ids_created: u64): address;
+}
+```
+> Từ khóa native cho biết hàm này không được viết bằng ngôn ngữ Move mà được viết bằng một ngôn ngữ khác (thường là Rust hoặc C++) trong môi trường của  blockchain. Các hàm native thường được sử dụng khi cần thực hiện các thao tác đòi hỏi hiệu năng cao hoặc cần truy cập trực tiếp vào tài nguyên hệ thống.
+
+## **Retrieving UID**
+
+Module object cung cấp nhiều cách để lấy thông tin UID của một object. Bạn có thể sử dụng các hàm khác nhau tùy theo nhu cầu:
+
+```rust
+// This function returns the ID encapsulated in the object's UID
+public fun id<T: key>(obj: &T): ID {
+    borrow_uid(obj).id
+}
+
+// This function returns a reference to the ID in the object's UID
+public fun borrow_id<T: key>(obj: &T): &ID {
+    &borrow_uid(obj).id
+}
+
+// This function returns the byte representation of the object's ID using BCS (Binary Canonical Serialization) encoding
+public fun id_bytes<T: key>(obj: &T): vector<u8> {
+    bcs::to_bytes(&borrow_uid(obj).id)
+}
+
+// This function returns the address form of the object's ID
+public fun id_address<T: key>(obj: &T): address {
+    borrow_uid(obj).id.bytes
+}
+```
+
+## Xoá UID 
+
+Trong Sui, UID là immutable và không thể thay đổi sau khi đã được tạo. Để "xóa" một object, bạn cần sử dụng hàm object::delete.
+
+```rust
+public struct Gift has key { id: UID }
+
+
+// test - kiểm thử
+let gift = Gift { id: object::new(ctx) }; // khởi tạo một gift mới với UID từ context
+
+let Gift { id } = gift; //unpack gift để lấy id
+object::delete(id); // xoá object thông qua id
+
+```
+
+## Code ví dụ: 
+
+```rust
+module hack_camp::gift {
+    public struct Gift has key { id: UID}
+    
+    // Create two Gift objects 
+    public fun mint(ctx: &mut TxContext) {
+        let gift1 = Gift {
+            id: object::new(ctx)
+        };
+
+        let gift2 = Gift {
+            id: object::new(ctx)
+        };
+
+	    // check  the UIDs of the two objects are unique
+        assert!(object::borrow_id(&gift1) != object::borrow_id(&gift2), 1);
+
+        // transfer these objects to caller
+        transfer::transfer(gift1, tx_context::sender(ctx));
+        transfer::transfer(gift2, tx_context::sender(ctx));
+    }
+
+    // delete object
+    public fun destory(gift: Gift) {
+        let Gift { id } = gift;
+        object::delete(id);
+    }
+
+    #[test]
+    public fun test_uid() {
+        let ctx = &mut tx_context::dummy();
+        mint(ctx);
+    }
+
+}
+```
+
+![](../assets/Objects/UID_ID.png)
+

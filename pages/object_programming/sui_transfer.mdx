@@ -1,0 +1,184 @@
+
+# Bài học chi tiết hơn về transfer 
+Một trong những tính năng cốt lõi của Move đang tập trung phát triển là khả năng nhận object( receive object). Trong đó tính năng mới của Move, [Transfer to Object](https://docs.sui.io/concepts/dynamic-fields/transfers/transfer-to-object?ref=blog.sui.io), cho phép một object có thể nhận object khác thay vì chỉ giới hạn ở việc chuyển tới địa chỉ ví trên Sui.
+
+Nội dung của bài học này sẽ là: 
+
+- Transfer ownership
+- transfer-to-object
+
+
+# Transfer ownership
+
+Các bạn đã học về các objects trong Move. Mình sẽ review lại 
+
+Chúng ta sẽ tiếp tục tìm hiểu về thư viện Transfer trong Sui (nằm tại suiframework/sources/transfer.move), được sử dụng để chuyển quyền sở hữu( owner), đóng băng( freeze) và share object. Bài viết này sẽ đi sâu vào ba hàm chính trong thư viện Transfer: transfer, freeze và share, giúp bạn hiểu rõ cách sử dụng và chức năng của chúng.
+
+
+## Transfer function
+
+Hàm transfer được sử dụng để chuyển quyền sở hữu của một đối tượng từ địa chỉ này sang địa chỉ khác. Dựa trên abilities của đối tượng (key và store), Transfer cung cấp hai version của hàm transfer: 
+
+- `transfer<T: key>(obj: T, recipient: address)` : Hàm này chuyển một đối tượng có key ability đến địa chỉ người nhận. Tuy nhiên nếu địa chỉ nhận là một ID object (không phải địa chỉ ví) object sẽ không thể truy cập được. Lý do là vì ID đối tượng chỉ là một mã định danh đơn giản, không có các yếu tố bảo mật như khóa riêng tư.
+    - Ngoài ra, hàm transfer có giới hạn sử dụng: nó chỉ hoạt động trong cùng một module. Ví dụ, nếu bạn tạo object trong module A, bạn chỉ có thể dùng transfer trong module A đó, không thể dùng ở module khác.
+    
+    Đây là cú pháp của transfer:
+    ```rust
+    // File: sui-framework/sources/transfer.move
+    public fun transfer<T: key>(obj: T, recipient: address) {
+        transfer_impl(obj, recipient)
+    }
+    ```
+
+-  `public_transfer<T: key + store>(obj: T, recipient: address)`  Hàm này tương tự như transfer nhưng áp dụng cho các object có cả hai abilities là key và store, cho phép object có thể được chuyển ra ngoài module. 
+
+```rust
+    public fun public_transfer<T: key + store>(obj: T, recipient: address) {
+     transfer_impl(obj, recipient)
+    }
+```
+
+Ví dụ cho việc sử dụng transfer và `public_transfer`: 
+
+```rust
+
+module sui_bootcamp::chuyen_quyen_so_huu_a {
+    public struct DoiTuongK has key { id: UID }
+    public struct DoiTuongKS has key, store { id: UID }
+}
+
+
+/// Import các kiểu DoiTuongK và DoiTuongKS từ module chuyen_quyen_so_huu_a 
+module sui_bootcamp::chuyen_quyen_so_huu_b {
+
+    // các kiểu không thuộc module này
+    use sui_bootcamp::chuyen_quyen_so_huu_a::{DoiTuongK, DoiTuongKS};
+
+    // Lỗi! DoiTuongK không có ability store và không thuộc module này
+    public fun chuyen_k(k: DoiTuongK, den: address) {
+        sui::transfer::transfer(k, den);
+    }
+
+    // Lỗi! DoiTuongKS có ability store nhưng hàm không public
+    public fun chuyen_ks(ks: DoiTuongKS, den: address) {
+        sui::transfer::transfer(ks, den);
+    }
+
+    // Lỗi! DoiTuongK không có ability store, public_transfer yêu cầu store
+    public fun chuyen_cong_khai_k(k: DoiTuongK) {
+        sui::transfer::public_transfer(k);
+    }
+
+    // Thành công! DoiTuongKS có ability store và hàm là public
+    public fun chuyen_cong_khai_ks(dt: DoiTuongKS, den: address) {
+        sui::transfer::public_transfer(dt, den);
+    }
+}
+```
+
+## freeze transfer 
+
+Cùng review lại thì  Freeze- đóng băng một object để chuyển nó vào trạng thái bất biến(immutable) , biến nó thành const variable  và không bao giờ có thể thay đổi được nữa.
+
+Đây là tên hàm:
+
+```
+// File: sui-framework/sources/transfer.move
+public fun freeze_object&lt;T: key&gt;(obj: T);
+```
+
+Bây giờ chúng ta sẽ xem một ví dụ về cách tạo và freeze đối tượng Config bởi admin:
+
+```rust
+module hack_camp::student {
+
+    use std::string::{Self, String};
+
+    public struct AdminCap has key { id: UID }
+
+    fun init(ctx: &mut TxContext) {
+       
+
+        let admin_cap = AdminCap { id: object::new(ctx) };
+        transfer::transfer(admin_cap, ctx.sender());
+
+    
+    }
+
+   public struct Config has key {
+    id: UID,
+    message: String
+    }
+
+
+    public fun create_and_freeze(
+        _: &AdminCap,
+        message: String,
+        ctx: &mut TxContext
+    ) {
+        let config = Config {
+            id: object::new(ctx),
+            message
+        };
+
+        // Freeze the object so it becomes immutable.
+        transfer::freeze_object(config);
+    }
+
+
+    // take message 
+    public fun message(c: &Config): String { c.message }
+
+
+    // deletê frozen object  
+    // neu la admin thi moi duoc xoa
+    public fun delete_config( _: &AdminCap, c: Config) {
+        let Config { id, message: _ } = c;
+        object::delete(id);
+    }
+
+}
+```
+
+Config là  object có trường message, và hàm create_and_freeze để một Config mới và freee băng nó. 
+
+Khi object đã bị đóng băng( frozen), nó có thể được truy cập bởi bất kỳ ai thông qua tham chiếu bất biến (immutable reference). Hàm message là một hàm public để lấy ra message từ object Config. Lúc này Config đã được public và có thể truy cập thông qua ID của nó, và message có thể được đọc bởi bất kỳ ai.
+
+Ví dụ: 
+
+```rust
+sui client call --package 0xe1960d2eebbd9cfa023238eb54724bc8151e31de0373b7245d88d17025879663 --module student --function create_and_freeze --args 0x3d8ca1044790590d932ffe5e0c979f0ffc75951da2fa805e4a0f86c61c973b09 "hello" --gas-budget 100000000
+
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Object Changes                                                                                        │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Created Objects:                                                                                      │
+│  ┌──                                                                                                  │
+│  │ ObjectID: 0x8f3e55fa3238a8801aefc4e84cbf2b85a0597787b6494c76308bbb8365a75ba0                       │
+│  │ Sender: 0x75fc542f5292e636856d2b72dae9831a20747c3876da16cfa4b5f4a31f909e19                         │
+│  │ Owner: Immutable                                                                                   │
+│  │ ObjectType: 0xe1960d2eebbd9cfa023238eb54724bc8151e31de0373b7245d88d17025879663::student::Config    │
+│  │ Version: 268743575                                                                                 │
+│  │ Digest: 2nd3srg17wJBvcAUBi2eZobeiqznjMvHPVvaPa2ANWXX                                               │
+│  └──                                                                                                  │
+
+
+---
+```
+
+Khi module được publish, hàm `init` sẽ được gọi, và object `AdminCap` mà chúng ta đã tạo sẽ được *chuyển quyền sở hữu* cho người gửi transaction. Hàm `ctx.sender()` trả về địa chỉ ví của người thực hiện transaction hiện tại.  
+
+- `transfer::freeze_object` là hàm dùng để đưa một object vào trạng thái bất biến (không thể thay đổi);
+- Khi một object đã bị freeze (đóng băng), nó sẽ không bao giờ có thể thay đổi, xóa hoặc chuyển đi được nữa, và bất kỳ ai cũng có thể truy cập object này thông qua tham chiếu bất biến;
+
+
+Từ một owned → frozen object: Bạn có thể dùng nó để đóng băng một object sau khi object đó đã được chuyển cho người dùng. Nó chấp nhận mọi object có thuộc tính `key`, không quan trọng object đó được tạo ở đâu hay thuộc về ai. 
+
+```tsx
+/// Freezes the `Gift` object so it becomes immutable.
+public fun freeze_gift(gift: Gift) {
+    transfer::freeze_object(gift);
+}
+```
+
+Tuy nhiên, cần lưu ý về bảo mật: Không nên đóng băng những object quan trọng như `AdminCap`, vì điều này sẽ cho phép ai cũng có thể truy cập vào nó. Thay vào đó, chỉ nên đóng băng những object an toàn như `Gift` mà bạn muốn chia sẻ cho người khác.
