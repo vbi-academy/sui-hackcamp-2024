@@ -32,10 +32,20 @@ Trong Sui, tất cả các transactions đều yêu cầu objects làm input và
 - **Unique Identifier (objectId):** Mỗi object có một định danh duy nhất để phân biệt với các objects khác. ID này được tạo ra khi object được khởi tạo và không thể thay đổi (immutable)
 - **Object Type (objType)**: Mỗi object có một kiểu xác định cấu trúc và hành vi của nó.
 - **Owner (owner)**: Mỗi object gắn với một chủ sở hữu có quyền kiểm soát object đó. Trên Sui, objects có thể được sở hữu bởi một tài khoản, được chia sẻ giữa tất cả tài khoản, hoặc bị đóng băng - chỉ cho phép truy cập đọc mà không được sửa đổi hay transfer.
-- **Version**: Mỗi khi object thay đổi trong Sui, một số phiên bản mới được tạo ra, đóng vai trò như một số ngẫu nhiên để ngăn chặn các tấn công replay.
+- **Version**: Mỗi khi object thay đổi trong Sui, một số phiên bản mới được tạo ra, đóng vai trò như một số ngẫu nhiên để ngăn chặn các tấn công DDOS.
 - **Digest**: Mỗi object có một digest - một hash của dữ liệu object. Digest được dùng để xác minh tính toàn vẹn của dữ liệu object và đảm bảo nó không bị can thiệp. Digest được tính khi object được tạo và được cập nhật khi dữ liệu object thay đổi.
-- **Content Fields**: Đây là vùng có kích thước thay đổi theo danh mục, chứa dữ liệu được mã hóa bằng Binary Canonical Serialization (BCS), ghi lại dữ liệu cụ thể của object.
 
+```bash
+... 
+│  ┌──                                                                                             │
+│  │ ObjectID: 0xf23a5e0ab3f054ac8762ef9b09d8b118f5168cc6c2a49a253f49a4cfeed50923                  │
+│  │ Sender: 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28                    │
+│  │ Owner: Account Address ( 0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c ) │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                    │
+│  │ Version: 268743490                                                                            │
+│  │ Digest: 3FnjZrvBfZSMGLNLUDLeEH2yuLtrdbcRdYzfRy7m2Dfx                                          │
+│  └──   
+...   
+```
 
-![](../assets/Objects/coin_example.png)
 

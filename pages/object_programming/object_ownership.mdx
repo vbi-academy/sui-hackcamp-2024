@@ -1,19 +1,25 @@
 # Object Ownership 
 
-Mỗi object đều có một trường chủ sở hữu(owner field) cho biết object này đang được sở hữu như thế nào. Quyền ownershiop quy định cách một đối tượng có thể được sử dụng trong các transaction. Có các  loại object:
+Mỗi object đều có một trường chủ sở hữu(owner field) cho biết object này đang được sở hữu như thế nào. Quyền ownership quy định cách một đối tượng có thể được sử dụng trong các transaction. Có các  loại object:
 
-1. Address-owner 
-3. Immutable
-3. Share
-4. Wrapped object - Dynamic fields
+1. `Address-owner `
+3. `Immutable`
+3. `Share`
+4. `Wrapped object - Dynamic fields`
 
 ## Owned by an address
 
-**Object thuộc sở hữu của address** là object được sở hữu bởi một địa chỉ 32-byte, có thể là địa chỉ account hoặc ID của một object khác. Chỉ có chủ sở hữu mới có quyền truy cập vào object đó. Có hai cách để tạo ra một object thuộc sở hữu của địa chỉ. Khi một đối tượng Move được tạo ra, nó có thể được chuyển cho một địa chỉ. Sau đó, địa chỉ này sẽ trở thành chủ sở hữu( owner) của object đó.  Chỉ có owner mới có thể sử dụng đối tượng của mình trong các transaction sigend. Khi sử dụng, đối tượng có thể được truyền vào theo 3 cách:
+1. **Object thuộc sở hữu của address** là object được sở hữu bởi một địa chỉ 32-byte, có thể là địa chỉ `account` hoặc `ID` của một object khác. 
 
-- read-only reference (&T)
-- mutable reference (`&mut T`) và
-- by-value (`T`)
+2. Chỉ có chủ sở hữu mới có quyền truy cập vào object đó. 
+
+3. Khi một đối tượng Move được tạo ra, nó có thể được chuyển cho một địa chỉ. Sau đó, địa chỉ này sẽ trở thành chủ sở hữu( owner) của object đó.  Chỉ có owner mới có thể sử dụng đối tượng của mình trong các transaction. 
+
+4. Khi sử dụng, đối tượng có thể được truyền vào theo 3 cách:
+
+    - read-only reference (&T)
+    - mutable reference (`&mut T`) và
+    - by-value (`T`)
 
 Đây làm một số cách để bạn tạo một address-owned object: 
 ```rust 
@@ -21,9 +27,21 @@ sui::transfer::transfer(obj: T, recipient: address)
 sui::transfer::public_transfer(obj: T, recipient: address)
 ```
 
+Câu hỏi:    Phân biệt giữa `transfer` và `public_transfer` 
+
+Link docs: https://docs.sui.io/concepts/transfers
+
+
+
 ## Immutable objects 
 
-Sau khi được tạo ra, trạng thái của các đối tượng này không thể thay đổi. Chúng không thể bị sửa đổi, transfer, hoặc xóa và không có chủ sở hữu( ownership), nghĩa là bất kỳ ai cũng có thể sử dụng object này. Các đối tượng immutable sẽ cung cấp tính bền vững và độ tin cậy, phù hợp với dữ liệu cần duy trì không đổi theo thời gian. Ví dụ như metadata của token Coin trên Sui, nơi mà các thông tin như tên, ký hiệu và số thập phân cần được cố định ngay từ khi tạo ra. 
++ Sau khi được tạo ra, trạng thái của các đối tượng này không thể thay đổi. 
+
++ Chúng không thể bị sửa đổi, transfer, hoặc xóa và không có chủ sở hữu( ownership), nghĩa là bất kỳ ai cũng có thể sử dụng object này. 
++ Các đối tượng immutable sẽ cung cấp tính bền vững và độ tin cậy, phù hợp với dữ liệu cần duy trì không đổi theo thời gian. 
+
+
+Ví dụ: Metadata của token Coin trên Sui, nơi mà các thông tin như tên, ký hiệu và số thập phân cần được cố định ngay từ khi tạo ra. 
 
 Đây là function giúp tạo một object immutable: 
 
@@ -42,7 +60,7 @@ Bạn có thể đọc thêm tài liệu về immutable: https://docs.sui.io/con
 
 ## Shared object
 
-Như vậy immutable object trên ở cũng có thể coi là **Shared object.** Nhưng sự khác biệt là Shared object có thể được read và mutabed ( thay đổi) được bởi bất kì ai).
+Như vậy immutable object trên ở cũng có thể coi là **Shared object.** Nhưng sự khác biệt là Shared object có thể được read và mutate (thay đổi được bởi bất kì ai).
 
 Để tạo share object thì ta cần phải gọi: 
 
@@ -87,19 +105,37 @@ public fun share_object<T: key>(obj: T) {
 
 Ngoài ra chúng ta còn có `public_share_object<T: key + store>(obj: T)` một function tương tự với `share_object` nhưng sẽ có thêm store cho phép object share với các module khác.
 
-⇒ Các bạn sẽ có thắc mắc là sự tương đồng và khác nhau giữa Immutable và share object là gì ? Giữa Freeze và Share khác nhau chỗ nào? 
+⇒ Các bạn sẽ có thắc mắc là sự tương đồng và khác nhau giữa Immutable và share object là gì ?
 
 ## Trade-Offs giữa Shared và Owned Objects
 
-- Đối với **owned object**: Xử lý nhanh hơn vì không cần qua quá trình đồng thuận( consesus). Tuy nhiên, có hai hạn chế:
+### Owned Objects
+Xử lý nhanh hơn vì không cần qua quá trình đồng thuận( consesus). 
+
+Tuy nhiên, có hai hạn chế:
     - Chỉ chủ sở hữu mới có thể sử dụng object, nên khó thực hiện các giao dịch cần nhiều người tham gia
     - Khi nhiều người muốn truy cập cùng một object thường xuyên (hot object), việc điều phối phải thực hiện bên ngoài blockchain
 
-- **Shared Objects**  Việc sử dụng shared object trong các transaction yêu cầu i phải đồng thuận(consensus) về cách đọc và write chúng. Điều này có nghĩa là bạn sẽ phải trả nhiều phí gas hơn một chút và đợi lâu hơn một chút để giao dịch hoàn tất.  Khi nhiều người cùng cố gắng sử dụng các shared object một lúc, thời gian chờ có thể sẽ còn lâu hơn nữa. Tuy nhiên, lợi ích là shared object mang lại cho bạn nhiều sự linh hoạt hơn trong cách sử dụng.
 
-Như vậy **Điểm tương đồng**: Cả hai đều thay đổi trạng thái của object, làm cho nó immutable ở một mức độ nào đó. Cả hai đều có abilities là  **key và store**, được sử dụng cho các thao tác bên trong và bên ngoài module.
+### Shared objects
+- Việc sử dụng shared object trong các transaction yêu cầu phải đồng thuận(consensus) về cách đọc và write chúng. Điều này có nghĩa là bạn sẽ phải trả nhiều phí gas hơn một chút và đợi lâu hơn một chút để giao dịch hoàn tất.  
 
-**Điểm khác biệt**: freeze làm cho object hoàn toàn bất biến( immutable), không cho phép bất kỳ hình thức transfer hay modify nào. Có thể hiểu đây là **chia sẻ bất biến( immutable sharing)**. Ngược lại, share  object làm cho object được chia sẻ, cho phép tất cả người dùng truy cập và sửa đổi. Có thể hiểu đây là **mutable sharing** .
+- Khi nhiều người cùng cố gắng sử dụng các shared object một lúc, thời gian chờ có thể sẽ còn lâu hơn nữa. Tuy nhiên, lợi ích là shared object mang lại cho bạn nhiều sự linh hoạt hơn trong cách sử dụng.
+
+
+### So sánh giữa `Owned` và `Shared` Object
+
+Như vậy **Điểm tương đồng**: Cả hai đều thay đổi trạng thái của object. Cả hai đều có abilities là  **key và store**, được sử dụng cho các thao tác bên trong và bên ngoài module.
+
+
+
+|  | Owned Objects | Shared Objects |
+| ------ | ------ | ------ |
+| Tính sở hữu | chỉ có owner mới có thể sử dụng object | bất kỳ ai cũng có thể sử dụng object |
+| Tốc độ truy cập | Nhanh  | Chậm hơn |
+| Tính linh hoạt | Không linh hoạt | Linh hoạt hơn |
+| Tính chia sẻ | Chia sẻ khi sử dụng `freeze object` -> immutable sharing  | Chia sẻ cho bất kỳ ai có nhu cậu sử dụng thông qua `share_object` -> mutable sharing |
+
 
 Ví dụ: 
 
@@ -145,4 +181,4 @@ struct Bar has store {
 
 Đối tượng Sui `Foo` với khả năng `key` có một instance `bar` với kiểu dữ liệu `Bar`, là một `struct`. Ở đây, `Bar` không phải là một đối tượng Sui vì nó không có `key` abilities  . Bạn có thể biến nó thành một đối tượng Sui và sử dụng nó trong `Foo`.
 
-Trong bài học sắp tới bạn sẽ học về dynamic object field. Đơn giản là chúng ta gọi object được sỡ hữu bởi object khác thì là object con( child).
+Trong bài học sắp tới bạn sẽ học về `dynamic object field`. Đơn giản là chúng ta gọi object được sỡ hữu bởi object khác thì là object con( child).
