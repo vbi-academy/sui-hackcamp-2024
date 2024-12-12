@@ -1,0 +1,183 @@
+Trong bài học trước bạn đã học về các loại objects trong Sui.
+
+Trong Sui Move, bạn có thể lồng các data structure vào nhau thông qua kỹ thuật gọi là wrapping. Giống như cách bạn để đồ vật vào trong một chiếc hộp, bạn có thể đặt một `struct` vào bên trong một struct khác. Ví dụ:
+
+```tsx
+struct Foo has key {
+    id: UID,
+    bar: Bar,
+}
+
+struct Bar has key, store {
+    id: UID,
+    value: u64,
+}
+```
+
+Để một struct trở thành một object  Sui, nó cần có`key` abilities.  Khi  đặt một object Sui kiểu `Bar` vào trong một đối tượng Sui kiểu `Foo`, kiểu đối tượng `Foo` bọc(wrapper) kiểu đối tượng `Bar`. Kiểu đối tượng `Foo` được gọi là **đối tượng bọc hoặc đối tượng bao bọc(  wrapping object.)** .
+
+Như vậy bạn tưởng tượng nếu một struct là “Foo” không phải là sui object mà một struct khác là “Bar” là sui object với key và store abilities. Bạn vẫn có thể  để “Bar” vào trong “Foo”,  nhưng điều này chỉ là tạm thời và sẽ không được lưu trữ trên blockchain.
+
+Khi bạn wrap một object, nó sẽ trở thành **một phần dữ liệu của wrapping object đó**. Điều này có nghĩa là chúng ta không thể tìm kiếm nó thông qua ID riêng của nó, và bạn cũng không thể truyền wrapped object như một tham số trong các giao dịch blockchain. **Cách duy nhất để truy cập wrapped object** là thông qua object đang wrap nó thôi. 
+
+Tuy nhiên chúng ta không thể tạo tình huống sau:  Object A wrap object B, B wrap C, và C lại wrap A 🫠. Điều này sẽ dẫn đến sự phức tạp và gây ra các vấn đề trong code của chính min.
+
+Bạn có thể "unwrap" (tháo gỡ) wrapped object. Khi unwrap, nó sẽ trở thành một object độc lập trở lại và có thể được truy cập trực tiếp trên blockchain. Object vẫn giữ nguyên ID duy nhất mà nó có trước khi được wrap.
+
+Vậy dưới đây là một số cách để wrap( bọc) lại một object vào một object khác: 
+
+## Direct wrapping ( Bọc trực tiếp)
+
+Nếu bạn đặt một Sui object trực tiếp như một field trong một Sui object khác, nó được gọi là **direct wrapping** (bọc trực tiếp). Với kiểu wrap này, object được bọc không thể được unwrap (tháo gỡ) trừ khi object được bọc nó bị phá hủy. Cách này thường được dùng để khóa các object với quyền truy cập hạn chế.  
+
+Hãy xem một ví dụ. Giả sử bạn có một loại object kiểu NFT trong Sui gọi là `Object`, với các thuộc tính như `scarcity` (độ hiếm) và `style` (phong cách). 
+
+Để đảm bảo công bằng, bạn cần chắc chắn rằng độ hiếm phải giống nhau và chỉ khác nhau về phong cách. Điều này là vì giá trị của **NFT sẽ cao hơn nếu nó có độ hiếm cao hơn**. Đây là ví dụ: 
+
+```tsx
+// Object  
+public struct Object has key, store {
+    id: UID,
+    scarcity: u8,
+    style: u8,
+}
+
+public entry fun create_object(scarcity: u8, style: u8, ctx: &mut TxContext) {
+    let object = Object {
+        id: object::new(ctx),
+        scarcity,
+        style,
+    };
+    transfer::transfer(object, tx_context::sender(ctx));
+}
+```
+
+Trong đoạn code trên chúng ta sẽ tạo ra một object bằng function `create_object` . Bất kì ai cũng có thể call function này và  created object sẽ gửi tới người kí transaction đó. Bởi vì chỉ chủ sở hữu object mới có thể gửi transaction để thay đổi object đó. Do đó nếu ai muốn change object họ cần phải gửi đến một bên thứ 3( third party)  như web3 swap khác. Như vậy để đảm bảo bạn vẫn giữ quyền kiểm soát các object của mình (như coins và NFT) và không giao quyền kiểm soát hoàn toàn cho bên thứ ba, bạn cần sử dụng kỹ thuật direct wrapping như sau:
+
+```tsx
+public struct ObjectWrapper has key {
+    id: UID,
+    original_owner: address,
+    to_swap: Object,
+    fee: Balance<SUI>,
+}
+```
+
+Object `ObjectWrapper` wrap object để swap:
+
+```tsx
+public entry fun request_swap(object: Object, fee: Coin<SUI>, service_address: address, ctx: &mut TxContext) {   
+    let wrapper = ObjectWrapper {
+        id: object::new(ctx),
+        original_owner: tx_context::sender(ctx),
+        to_swap: object,
+        fee: coin::into_balance(fee),
+    };
+    
+    transfer::transfer(wrapper, service_address);
+}
+```
+
+Trong function này, object cần được swap được wrap bằng `ObjectWrapper`, và một khoản fee được chỉ định. Wrapper sau đó được gửi đến service address 
+Điều quan trọng ở đây là mặc dù người vận hành dịch vụ sở hữu ObjectWrapper, nhưng không thể truy cập hoặc đánh cắp "Object" được wrap bên trong nó. Điều này là do Sui không cho phép truy cập vào object đã được wrap mà không có một function unwrap cụ thể.
+
+## **Wrapping qua `Option`**
+
+Trong ví dụ Direct wrapping ở trên, bạn phải destroy một object để lấy được **object bên trong nó** ra. Tuy nhiên, đôi khi ta cần sự linh hoạt hơn, khi mà wrapping  không phải lúc nào cũng chứa wrapped object bên trong nó, và bạn có thể thay thế wrapped object bằng một object khác khi cần thiết.
+
+Lấy ví dụ mình định nghĩa một `Simplewarrior` với option có thể cũng có thể không với kiếm `sword` hay `shield:` 
+
+```tsx
+struct SimpleWarrior has key {
+    id: UID,
+    sword: Option<Sword>,
+    shield: Option<Shield>,
+}
+
+struct Sword has key, store {
+    id: UID,
+    strength: u8,
+}
+
+struct Shield has key, store {
+    id: UID,
+    armor: u8,
+}
+```
+
+Như vậy khi tạo một warrior, bạn có thể bắt đầu với không có bất kì equipment nào: 
+
+```tsx
+
+public entry fun create_warrior(ctx: &mut TxContext) {
+    let warrior = SimpleWarrior {
+        id: object::new(ctx),
+        sword: option::none(),
+        shield: option::none(),
+    };
+    transfer::transfer(warrior, tx_context::sender(ctx))
+}
+```
+
+Nhưng mà giờ thì bạn muốn thay đổi chiến binh của bạn sẽ có kiếm đúng không? thì ta chỉ cần viết một function thay đổi giá trị trong đó. Nếu có kiếm sẵn ở trong object thì mình sẽ lấy ra và transfer đến với sender rồi wrap một thanh kiếm mới: 
+
+```tsx
+public entry fun equip_sword(warrior: &mut SimpleWarrior, sword: Sword, ctx: &mut TxContext) {
+    if (option::is_some(&warrior.sword)) {
+        let old_sword = option::extract(&mut warrior.sword);
+        transfer::transfer(old_sword, tx_context::sender(ctx));
+    };
+    
+    option::fill(&mut warrior.sword, sword);
+}
+```
+
+### Wrapping thông qua vector
+
+Trong Sui, ta còn có cách để wrap các objects chính là dùng vector, tương tự như `Option`  type. Cách này có thể giúp bạn chứa một hợac nhiều objects cùng một type. 
+
+Ví dụ mình có một nông trại và có các pets trong đó: 
+
+```tsx
+rust
+struct Pet has key, store {
+    id: UID,
+    cuteness: u64,
+}
+
+struct Farm has key {
+    id: UID,
+    pets: vector<Pet>,
+}
+
+```
+```
+
+# Object unwrapping
+
+Trong trường hợp unwrapping (tháo gỡ), một cách phổ biến là ta tạo hàm unwrap, đầu vào một object sau đó trả về object tại địa chỉ đó, từ đó giúp tháo gỡ object ra khỏi wrapping object.
+
+```tsx
+public struct ObjectWrapper has key {
+    id: UID,
+    original_owner: address,
+    to_swap: Object,
+    fee: Balance<SUI>,
+}
+
+public entry fun unwrapped_object_and_transfer(object_wrrapper: ObjectWrapper, ctx: &mut TContext)!
+	let ObjectWrapper {
+	id,
+	original_owner,
+	to_swap: -.
+	fee
+	} = object_wrrapper;
+	transfer::transfer(original_owner, tx_context:: sender(ctx));
+	
+	// delete original_owner
+	object :: delete(id)
+	
+}
+```
+
+
