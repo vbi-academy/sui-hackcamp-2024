@@ -151,13 +151,13 @@ struct Farm has key {
 }
 
 ```
-```
+
 
 # Object unwrapping
 
 Trong trường hợp unwrapping (tháo gỡ), một cách phổ biến là ta tạo hàm unwrap, đầu vào một object sau đó trả về object tại địa chỉ đó, từ đó giúp tháo gỡ object ra khỏi wrapping object.
 
-```tsx
+```rust
 public struct ObjectWrapper has key {
     id: UID,
     original_owner: address,
