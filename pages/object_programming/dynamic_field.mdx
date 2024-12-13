@@ -9,14 +9,14 @@ Khi làm việc với object fields trong Sui, bạn thường dùng chúng đ�
 SUI giải quyết những vấn đề này với dynamic fields, cho phép thêm và xóa fields một cách linh động. Các fields này có thể có tên tùy ý và chỉ tính phí gas khi được truy cập. Chúng cũng có khả năng lưu trữ các giá trị không đồng nhất.
 
 
-## Vây Fields và Object Fields khác nhau như thế nào trong Dynamic object ? 
+## Vậy Dynamic Fields và Dynamic Object Fields khác nhau như thế nào? 
 
-Có hai loại dynamic field - "fields" và "object fields" - khác nhau về cách lưu trữ giá trị:
+Có hai loại dynamic field - `fields` và `object fields` - khác nhau về cách lưu trữ giá trị:
 
 - **Fields** có thể lưu trữ bất kỳ giá trị nào có khả năng `store`. Tuy nhiên, object được lưu trong loại field này sẽ bị wrapped và không thể truy cập thông qua ID bởi các công cụ bên ngoài (explorer, wallet, v.v.) khi truy cập storage.
 - **Object fields** *bắt buộc* phải là objects (có khả năng `key` và trường `id: UID` ở vị trí đầu tiên), nhưng vẫn có thể truy cập thông qua ID bởi các công cụ bên ngoài.
 
-Các modules để tương tác với các fields này có thể được tìm thấy tại module dynamic_field và dynamic_object_field.
+Các modules để tương tác với các fields này có thể được tìm thấy tại module `dynamic_field` và `dynamic_object_field.`
 
 Khác với object fields thông thường chỉ chấp nhận định danh Move, tên của dynamic fields có thể là bất kỳ giá trị nào hỗ trợ các khả năng copy, drop, và store. Điều này bao gồm tất cả các kiểu dữ liệu nguyên thủy của Move như số nguyên, Boolean, chuỗi bytes, cũng như các struct..
 
@@ -53,7 +53,9 @@ public struct Laptop has key {
 
 ## Core Functions
 
-Adding a Dynamic Field (`add`): Hàm này thêm một dynamic field vào object. Nếu field đã tồn tại, nó sẽ throw lỗi EFieldAlreadyExists. I Implementation logic của add function  sẽ call đến `to_address` để lấy object address. Sau đó sẽ generate một unique hash dựa vào tham số object's address và field name. Cuối cùng dùng `add_child_object`: 
+### Adding a Dynamic Field (`add`)
+
+Hàm này thêm một dynamic field vào object. Nếu field đã tồn tại, nó sẽ throw lỗi EFieldAlreadyExists. I Implementation logic của add function  sẽ call đến `to_address` để lấy object address. Sau đó sẽ generate một unique hash dựa vào tham số object's address và field name. Cuối cùng dùng `add_child_object`: 
 
 Đây là code `add` function từ module: 
 
@@ -89,7 +91,8 @@ public fun add_attribute(laptop: &mut Laptop, name: String, value: u64) {
 ```
 
 
-Borrowing a Dynamic Field: (borrow): Hàm này cho phép mượn (borrow) một dynamic field từ object nhưng chỉ để đọc (immutable). Nếu field không tồn tại hoặc kiểu dữ liệu không khớp, nó sẽ abort với lỗi tương ứng. 
+### Borrowing a Dynamic Field: (borrow)
+Hàm này cho phép mượn (borrow) một dynamic field từ object nhưng chỉ để đọc (immutable). Nếu field không tồn tại hoặc kiểu dữ liệu không khớp, nó sẽ abort với lỗi tương ứng. 
 
 ```rust 
 public fun borrow<Name: copy + drop + store, Value: store>(
@@ -139,8 +142,10 @@ public fun set_image_url(laptop: &mut Laptop, name: String, new_url: String) {
 
 ```
 
-Remove Dynamic Field (remove): Hàm này xóa một dynamic field khỏi object và trả về giá trị của nó. Nếu field không tồn tại hoặc kiểu dữ liệu không khớp, hàm sẽ bị abort với lỗi tương ứng. 
-```
+### Remove Dynamic Field (remove): 
+
+Hàm này xóa một dynamic field khỏi object và trả về giá trị của nó. Nếu field không tồn tại hoặc kiểu dữ liệu không khớp, hàm sẽ bị abort với lỗi tương ứng. 
+```rust
 public fun remove<Name: copy + drop + store, Value: store>(
     object: &mut UID,
     name: Name,
@@ -165,14 +170,18 @@ public fun remove_sticker(laptop: &mut Laptop, name: String) {
 
 
 
-## Sample code : 
+## Ví dụ 
 
-Ví dụ code dùng dynamic fields trong Sui Move để mở rộng một object. 
+Dùng dynamic fields trong Sui Move để mở rộng một object. 
 
-Mình sẽ định nghĩa hai struct **Student** và **Course**, rồi dùng phương thức `dynamic_field::add` để thêm một `Course` như một dynamic field vào instance `Student`, đại diện cho các khóa học mà sinh viên đã đăng ký. 
++ Định nghĩa hai struct **Student** và **Course**
++ Dùng phương thức `dynamic_field::add` để thêm một `Course` như một dynamic field vào instance `Student`, đại diện cho các khóa học mà sinh viên đã đăng ký. 
 
-Sau đó, sửa tên khóa học bằng `dynamic_field::borrow_mut`,  cuối cùng là xóa field bằng `dynamic_field::remove`, và cuối cùng dùng assert! để kiểm tra sự tồn tại của field trước khi destroy object…
++ Sửa tên khóa học bằng `dynamic_field::borrow_mut`, 
++ Xóa field bằng `dynamic_field::remove`
 
+
+### Step 1:Code 
 
 ```rust 
 module hack_camp::dynamic {
@@ -231,9 +240,13 @@ module hack_camp::dynamic {
     }
 }
 ```
+### Step 2: Publish package 
 
+```bash
+sui client publish --gas-budget 100000000
+```
 
-
+### Step 3: Kiểm tra dynamic field 
 ```
 sui client object 0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff
 
@@ -277,7 +290,7 @@ sui client object 0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125d
 
 
 
-Thay đổi tên 
+### Step 4: Thay đổi tên 
 ```
 sui client call --package 0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d946338bc0f1d --module dynamic --function modify_name --args 0x1f42983050897772ffede4d2367f05ee7c31082045969a33b48a0efb466b4179 "sui bootcamp 2024" --gas-budget 100000000
 ```
@@ -285,6 +298,7 @@ sui client call --package 0xf2b43bf3ef77562ab3f29368d2817f484d529cf0adf0441aff5d
 
 
 
+### Step 5: Kiểm tra dynamic field sau khi đổi tên 
 
 ```
 Sui client object 0x65fda0fbe4e26f82fbf7d5c97b2bf2abcdef0183f3b1a8697f4c2f36125dfaff

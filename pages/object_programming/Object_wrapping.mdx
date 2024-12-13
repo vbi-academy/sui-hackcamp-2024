@@ -183,18 +183,20 @@ public struct ObjectWrapper has key {
     fee: Balance<SUI>,
 }
 
-public entry fun unwrapped_object_and_transfer(object_wrrapper: ObjectWrapper, ctx: &mut TContext)!
-	let ObjectWrapper {
-	id,
-	original_owner,
-	to_swap: -.
-	fee
-	} = object_wrrapper;
-	transfer::transfer(original_owner, tx_context:: sender(ctx));
-	
-	// delete original_owner
-	object :: delete(id)
-	
+public entry fun unwrapped_object_and_transfer(object_wrrapper: ObjectWrapper, ctx: &mut TxContext){
+    let ObjectWrapper {
+        id,
+        original_owner,
+        to_swap,
+        fee,
+        } = object_wrrapper;
+
+    fee.destroy_zero();
+    transfer::transfer(to_swap, tx_context:: sender(ctx));
+
+    // delete original_owner
+    object :: delete(id)
+
 }
 ```
 
