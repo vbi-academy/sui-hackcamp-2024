@@ -12,29 +12,13 @@ Như đã học trong phần Object-centric, các module Sui Move được lưu 
 
 - tên hàm là `init`
 - Một tham số phải có là `&mut TxContext`
-- Khống có giá trị trả về ( return values)
-- private ( tất nhiên rồi)
-- Optional Parameter: Sẽ có thêm tham số one-time witness của module ( bạn sẽ được học ở các bài học tiếp theo)
-
-Để hàm khởi tạo này hoạt động được, nó cần có một số điều kiện quan trọng:
-
-- tên hàm là `init`
-- Một tham số phải có là `&mut TxContext`
-- Khống có giá trị trả về ( return values)
-- private ( tất nhiên rồi)
-- Optional Parameter: Sẽ có thêm tham số one-time witness của module ( bạn sẽ được học ở các bài học tiếp theo)
-
-Để hàm khởi tạo này hoạt động được, nó cần có một số điều kiện quan trọng:
-
-- tên hàm là `init`
-- Một tham số phải có là `&mut TxContext`
-- Khống có giá trị trả về ( return values)
+- Không có giá trị trả về ( return values)
 - private ( tất nhiên rồi)
 - Optional Parameter: Sẽ có thêm tham số one-time witness của module ( bạn sẽ được học ở các bài học tiếp theo)
 
 Đây là ví dụ: 
 
-```tsx
+```rust
 module sui_bootcamp::hackcamp {
 
     use std::string::{Self, String};
