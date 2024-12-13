@@ -4,7 +4,6 @@ Trong Sui Move, UID, ID và Address là ba khái niệm có mối liên hệ ch�
 
 Đầu tiên, Address là một trong những kiểu dữ liệu cơ bản trong Sui Move, có độ dài 32 bytes, được dùng để định danh địa chỉ duy nhất của các tài khoản hoặc objects trên blockchain ( mình đã viết về 2 bài viết address ở section 3 và address type ở section 4) 
 
-Đây là ví dụ address: 
 
 ```rust
 public struct ID has copy, drop, store {
@@ -12,6 +11,8 @@ public struct ID has copy, drop, store {
 }
 
 ```
+Link code: https://docs.sui.io/references/framework/sui-framework/object#0x2_object_ID
+
 
 ID là một struct bao bọc kiểu dữ liệu Address và có các tính năng copy và store, cho phép nó được lưu trữ trên chain. Tuy nhiên, ID không thể được dùng để định danh các object duy nhất vì nóchỉ  có tính năng copy, nghĩa là bất kỳ ai cũng có thể sao chép một ID với cùng một Address, và nó có thể bị hủy bỏ tùy ý.
 
@@ -21,6 +22,9 @@ public struct UID has store {
 }
 
 ```
+
+Link code: https://docs.sui.io/references/framework/sui-framework/object#struct-uid
+
 
 UID wrap ID và không thể copy hay xóa tùy ý (chỉ có thể xóa bằng cách gọi hàm object::delete()). Khác với ID, UID chỉ có thể được tạo bởi transaction context ctx (thông qua hàm object::new(ctx)). Vì vậy, nó có thể định danh một object một cách duy nhất.
 
