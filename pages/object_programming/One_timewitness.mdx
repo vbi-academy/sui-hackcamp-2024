@@ -62,7 +62,7 @@ Trong nội dung này, Mình sẽ tập trung vào one-time witness, đây thự
 
 One-time witness (OTW) là một loại witness đặc biệt chỉ có thể được sử dụng một lần duy nhất. Nó không thể được tạo ra một cách thủ công và mỗi module chỉ có một instance. Một type được Sui system xem là OTW khi nó thỏa mãn các rule sau:
 
-* Chỉ có capability drop.
+* Chỉ có ability drop.
 * Không có fields nào.
 * Không phải là generic type
 * Tên sẽ là giống với tên module và  phải viết hoa toàn bộ
@@ -97,18 +97,17 @@ Cấu trúc trên nó đáp ứng với ont time witness rules trên và đó l�
 
 
 fun init(witness: MY_COIN, ctx: &mut TxContext) {
-				let (treasury, metadata) = coin::create_currency(
-					witness,
-					6,
-					b"MOON",
-				    b"CTIANMING_MY_COIN",
-			   	    b"MOON_COIN",
-					option::none(),
-					ctx);
-				debug::print(&string(b"init MY_COIN"));
-				transfer::public_freeze_object(metadata);
-				transfer::public_transfer(treasury, ctx.sender())
-		}
+    let (treasury, metadata) = coin::create_currency(
+        witness,
+        6,
+        b"MOON",
+        b"This is moon",
+        b"MOON_COIN",
+        option::none(),
+        ctx);
+    transfer::public_freeze_object(metadata);
+    transfer::public_transfer(treasury, ctx.sender())
+}
 ```
 
 
