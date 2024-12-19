@@ -1,4 +1,4 @@
-Tiếp theo đây là các khái niệm cơ bản mà dev cần nắm để bắt đầu với Su Move. Trong bài học này, chúng ta sẽ đi sâu vào một chủ đề thực tế hơn và một trong phần phổ biến nhất trong blockchain - Token. 
+Tiếp theo đây là các khái niệm cơ bản mà dev cần nắm để bắt đầu với Sui Move. Trong bài học này, chúng ta sẽ đi sâu vào một chủ đề thực tế hơn và một trong phần phổ biến nhất trong blockchain - Token. 
 
 # Token là gì ? 
 
@@ -129,4 +129,191 @@ fun init(otw: MYCOIN, ctx: &mut TxContext) {
     transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
 }
 
+```
+
+Chúng ta đã học cách sử dụng object `TreasuryCap<CoinType>;` để mint coin. Tuy nhiên, chỉ owner của TreasuryCap mới có thể gọi nó. Vậy làm thế nào nếu chúng ta muốn cho phép user tự do mint coin (có thể giới hạn một số lượng nhất định)? Điều này sẽ hoạt động như thế nào?
+
+```rust
+
+struct MYCOIN has drop {}
+
+struct TreasuryCapHolder has key {
+    id: UID,
+    treasury_cap: TreasuryCap<MYCOIN>,
+}
+
+fun init(otw: MYCOIN, ctx: &mut TxContext) {
+    let (treasury_cap, metadata) = coin::create_currency(
+        otw,
+        9,
+        b"MYC",
+        b"MyCoin",
+        b"My Coin description",                       option::some(url::new_unsafe(string::utf8(bb"https://mycoin.com/logo.png"))),
+        ctx,
+    );
+    transfer::public_freeze_object(metadata);
+    
+    let treasury_cap_holder = TreasuryCapHolder {
+        id: object::new(ctx),
+        treasury_cap,
+    };
+    transfer::share_object(treasury_cap_holder);
+}
+
+entry fun mint(treasury_cap_holder: &mut TreasuryCapHolder, ctx: &mut TxContext) {
+    let treasury_cap = &mut treasury_cap_holder.treasury_cap;
+    let coins = coin::mint(treasury_cap, 1000, ctx);
+    // Do something with the coins
+}
+```
+
+### Update coinmetada 
+
+Khi chúng ta tạo MyCoin trước đó, chúng ta đã freeze (đóng băng) metadata object được trả về. Điều này sẽ không cho phép bất kỳ thay đổi nào đối với metadata (số thập phân/ký hiệu/tên/mô tả/url logo) trong tương lai.
+
+Nói về decimals (số thập phân), chúng ta chưa thực sự giải thích nó dùng để làm gì. Decimals thường được sử dụng cho Coins/tokens để giảm thiểu lỗi làm tròn. Hầu hết các ngôn ngữ smart contract, bao gồm cả Move, không có số thập phân và tất cả các phép toán đều dựa trên số nguyên. Điều này có nghĩa là 5 / 2 = 2 trong Move, dẫn đến lỗi làm tròn là 1. Nếu không có decimals, mọi người sẽ mất rất nhiều tiền. Decimals tối thiểu là 6 thường được sử dụng trong crypto và đôi khi có thể cao tới 18 (1 coin = 10^18 đơn vị). Trong hầu hết các trường hợp, 9 decimals là đủ để làm cho lỗi làm tròn nhỏ và không đáng kể đối với người dùng.
+
+Quay lại với metadata object, nếu bạn nghĩ có khả năng sẽ muốn thay đổi metadata của coin trong tương lai, bạn không nên freeze nó mà thay vào đó hãy transfer nó vào một tài khoản admin để bảo quản. Trong tương lai, bạn có thể tận dụng các function khác nhau trong coin để cập nhật metadata mà bạn muốn:
+
+```rust
+/// Update name of the coin in `CoinMetadata`
+public entry fun update_name<T>(
+    _treasury: &TreasuryCap<T>, metadata: &mut CoinMetadata<T>, name: string::String
+) {
+    metadata.name = name;
+}
+
+/// Update the symbol of the coin in `CoinMetadata`
+public entry fun update_symbol<T>(
+    _treasury: &TreasuryCap<T>, metadata: &mut CoinMetadata<T>, symbol: ascii::String
+) {
+    metadata.symbol = symbol;
+}
+
+/// Update the description of the coin in `CoinMetadata`
+public entry fun update_description<T>(
+    _treasury: &TreasuryCap<T>, metadata: &mut CoinMetadata<T>, description: string::String
+) {
+    metadata.description = description;
+}
+
+/// Update the url of the coin in `CoinMetadata`
+public entry fun update_icon_url<T>(
+    _treasury: &TreasuryCap<T>, metadata: &mut CoinMetadata<T>, url: ascii::String
+) {
+    metadata.icon_url = option::some(url::new_unsafe(url));
+}
+
+
+```
+
+
+Note: Lưu ý là decimals là một trường hợp đặc biệt và không có function để cập nhật nó. Lý do là vì decimals là một thuộc tính cơ bản của coin và nếu thay đổi nó có thể ảnh hưởng đến số dư của tất cả mọi người. Vì vậy, để đảm bảo an toàn và đơn giản, Coin của Sui không cho phép chỉnh sửa decimals.
+
+Để gọi một như coin::update_symbol, sender cần có quyền truy cập vào cả đối tượng TreasuryCap và metadata. Lưu ý rằng cả hai struct TreasuryCap và Metadata đều có khả năng store nên chúng ta có thể lưu trữ chúng ở một nơi cho phép truy cập và chỉnh sửa theo chương trình sau này:
+
+```rust
+ public struct MY_COIN has drop {}
+
+    fun init(witness: MY_COIN, ctx: &mut TxContext) {
+
+        let (treasury, coinmetada) = coin::create_currency(
+            witness,
+            5,
+            b"HIENP",
+            b"Hien coin ",
+            b"My first coin",
+            option::none(),
+            ctx
+        );
+
+        transfer::public_share_object(coinmetada);
+        transfer::public_transfer(treasury, ctx.sender());
+        // transfer::public_share_object(treasury);
+    }
+
+    public entry fun mint_token(
+        treasury: &mut TreasuryCap<MY_COIN>,
+        ctx: &mut TxContext
+    ) {
+        let coin_object = coin::mint(treasury, 350000, ctx);
+        transfer::public_transfer(coin_object, ctx.sender());
+    }
+
+
+    entry fun update_symbol(metadata: &mut CoinMetadata<MY_COIN>, treasury_cap: &mut TreasuryCap<MY_COIN>,  new_symbol: String) {
+        coin::update_symbol(treasury_cap, metadata, new_symbol);
+    }
+
+```
+
+Sau khi `sui client publish`: 
+
+```
+---------
+│ objectId      │  0x8ce2d659b9b9de5021296015129900f2c5ae640eeef9d606082565b9c3a86464                                                                     │
+│ version       │  268743593                                                                                                                              │
+│ digest        │  3nNESPVW9ZwTVA7DLrNBde6FegqKDMEZ8NmNc2WZXEes                                                                                           │
+│ objType       │  0x2::coin::CoinMetadata<0x104e4c6b445afa3df0de8db4915986a928f6eda3afa7ebe72f544a6c743fe3fa::my_coin::MY_COIN>                          │
+│ owner         │ ╭────────┬──────────────────────────────────────────╮                                                                                   │
+│               │ │ Shared │ ╭────────────────────────┬─────────────╮ │                                                                                   │
+│               │ │        │ │ initial_shared_version │  268743593  │ │                                                                                   │
+│               │ │        │ ╰────────────────────────┴─────────────╯ │                                                                                   │
+│               │ ╰────────┴──────────────────────────────────────────╯                                                                                   │
+│ prevTx        │  BDosWrAX7c6CTkw5WHGp8BqCxSvVrqNATV4UBdgEBiyh                                                                                           │
+│ storageRebate │  1945600                                                                                                                                │
+│ content       │ ╭───────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│               │ │ dataType          │  moveObject                                                                                                     │ │
+│               │ │ type              │  0x2::coin::CoinMetadata<0x104e4c6b445afa3df0de8db4915986a928f6eda3afa7ebe72f544a6c743fe3fa::my_coin::MY_COIN>  │ │
+│               │ │ hasPublicTransfer │  true                                                                                                           │ │
+│               │ │ fields            │ ╭─────────────┬───────────────────────────────────────────────────────────────────────────────╮                 │ │
+│               │ │                   │ │ decimals    │  5                                                                            │                 │ │
+│               │ │                   │ │ description │  My first coin                                                                │                 │ │
+│               │ │                   │ │ icon_url    │                                                                               │                 │ │
+│               │ │                   │ │ id          │ ╭────┬──────────────────────────────────────────────────────────────────────╮ │                 │ │
+│               │ │                   │ │             │ │ id │  0x8ce2d659b9b9de5021296015129900f2c5ae640eeef9d606082565b9c3a86464  │ │                 │ │
+│               │ │                   │ │             │ ╰────┴──────────────────────────────────────────────────────────────────────╯ │                 │ │
+│               │ │                   │ │ name        │  Hien coin                                                                    │                 │ │
+│               │ │                   │ │ symbol      │  HIENP                                                                        │                 │ │
+│               │ │                   │ ╰─────────────┴───────────────────────────────────────────────────────────────────────────────╯                 │ │
+│               │ ╰───────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰───────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+
+Minh bay gio co the rename symbol:
+
+```
+sui client call --package 0x104e4c6b445afa3df0de8db4915986a928f6eda3afa7ebe72f544a6c743fe3fa --module my_coin --function update_symbol --args 0x8ce2d659b9b9de5021296015129900f2c5ae640eeef9d606082565b9c3a86464 0xf664dbd3c1fbef16810b98b2d673debff4ce5dce6b6526638682f98d0f23e090 "HELLO"
+
+ket qua la: 
+---
+
+╭───────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ objectId      │  0x8ce2d659b9b9de5021296015129900f2c5ae640eeef9d606082565b9c3a86464                                                                     │
+│ version       │  268743594                                                                                                                              │
+│ digest        │  GAb1MgKnyk4MkzYEz3q69Hqo1bdT1VjjegxKuHB6FY76                                                                                           │
+│ objType       │  0x2::coin::CoinMetadata<0x104e4c6b445afa3df0de8db4915986a928f6eda3afa7ebe72f544a6c743fe3fa::my_coin::MY_COIN>                          │
+│ owner         │ ╭────────┬──────────────────────────────────────────╮                                                                                   │
+│               │ │ Shared │ ╭────────────────────────┬─────────────╮ │                                                                                   │
+│               │ │        │ │ initial_shared_version │  268743593  │ │                                                                                   │
+│               │ │        │ ╰────────────────────────┴─────────────╯ │                                                                                   │
+│               │ ╰────────┴──────────────────────────────────────────╯                                                                                   │
+│ prevTx        │  4U7X99Ms3uuWQApLCfPmjNorHPt4cM2eb9rAsqGg3LoT                                                                                           │
+│ storageRebate │  1945600                                                                                                                                │
+│ content       │ ╭───────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│               │ │ dataType          │  moveObject                                                                                                     │ │
+│               │ │ type              │  0x2::coin::CoinMetadata<0x104e4c6b445afa3df0de8db4915986a928f6eda3afa7ebe72f544a6c743fe3fa::my_coin::MY_COIN>  │ │
+│               │ │ hasPublicTransfer │  true                                                                                                           │ │
+│               │ │ fields            │ ╭─────────────┬───────────────────────────────────────────────────────────────────────────────╮                 │ │
+│               │ │                   │ │ decimals    │  5                                                                            │                 │ │
+│               │ │                   │ │ description │  My first coin                                                                │                 │ │
+│               │ │                   │ │ icon_url    │                                                                               │                 │ │
+│               │ │                   │ │ id          │ ╭────┬──────────────────────────────────────────────────────────────────────╮ │                 │ │
+│               │ │                   │ │             │ │ id │  0x8ce2d659b9b9de5021296015129900f2c5ae640eeef9d606082565b9c3a86464  │ │                 │ │
+│               │ │                   │ │             │ ╰────┴──────────────────────────────────────────────────────────────────────╯ │                 │ │
+│               │ │                   │ │ name        │  Hien coin                                                                    │                 │ │
+│               │ │                   │ │ symbol      │  HELLO                                                                        │                 │ │
+│               │ │                   │ ╰─────────────┴───────────────────────────────────────────────────────────────────────────────╯                 │ │
+│               │ ╰───────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
 ```

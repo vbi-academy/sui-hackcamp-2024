@@ -2,5 +2,8 @@
   "introduction_tokens" : "Introduction về Tokens, ERC20 và Coins",
   "coin_module": "Coin module",
   "Balance_module": "Balance module",
-  "Coin_and_balance": "Coin và Balance"
+  "Coin_and_balance": "Coin và Balance",
+  "Intro_to_nft": "NFT trong Sui move",
+  "publisher": "Publisher pbject",
+  "Sui_object_display": "Sui object display"
 }
