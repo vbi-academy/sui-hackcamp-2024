@@ -1,0 +1,46 @@
+# Coin và Balance
+
+Một trong những điểm gây nhầm lẫn phổ biến cho các dev mới về Coin trong Sui đó là sự xuất hiện của một object Balance trông khá giống:
+
+```tsx
+struct Coin<phantom T> has key, store {
+    id: UID,
+    balance: Balance<T>
+}
+
+/// Storable balance - an inner struct of a Coin type.
+/// Can be used to store coins which don't need the key ability.
+struct Balance<phantom T> has store {
+    value: u64
+}
+```
+
+# Vậy chính xác thì sự khác biệt giữa Coin và Balance là gì và khi nào chúng ta nên sử dụng?
+
+ Để dễ hình dung hơn thì các bạn có thể tưởng tượng như sau: 
+
+Coin giống như một chiếc ví tiền. Bên trong ví có chứa số dư (Balance) và bạn có thể lấy tiền ra hoặc bỏ tiền vào ví này.
+
+Balance thì giống như tiền mặt vậy. Nó không thể tồn tại một mình mà phải được cất giữ trong ví hoặc túi. Builder có thể tự tạo ra các object "túi" của riêng họ để lưu trữ Balance.
+
+Mặc dù object Coin có thể được lưu trữ (store ability), chúng ta không nên đặt nó vào bên trong các object khác. Có hai lý do chính:
+
+1. Coin đã là một "container" (vùng chứa) rồi, nên việc đặt nó vào một container khác là không cần thiết. Thay vào đó, hãy sử dụng Balance.
+2. Nếu bạn đặt Coin vào bên trong một object khác, mà nó sẽ bị xóa khỏi global storage. Điều này có thể gây ra vấn đề nghiêm trọng vì ví của bạn có thể "biến mất" không như mong muốn.
+
+Mình có ví dụ mình có function lấy coin từ `from_wallet` object và nạp vào `to_wallet`.  Chúng ta cần sử dụng hàm `coin::balance_mut`để truy cập vào balance bên trong object`Coin` vì các trường của struct sẽ **không thể truy cập được từ bên ngoài module coin ( các bạn có thể đọc lại nội dung struct )**
+
+```rust
+entry fun transfer_coins(from_wallet: &mut Coin<MYCOIN>, amount: u64, to_wallet: &mut Coin<MYCOIN>, ctx: &mut TxContext) {
+    let cash = coin::take(coin::balance_mut(from_wallet), amount, ctx);
+    coin::put(coin::balance_mut(to_wallet), cash);
+}
+```
+
+Module `Coin` trong Sui không hỗ trợ chuyển trực tiếp từ object `Coin` này sang object `Coin` khác. Nên Developer sẽ phải sử dụng  các hàm take + put để thực hiện việc transfer
+
+Một số hàm khác đáng chú ý trong module coin là:
+
+1. `balance(&Coin)`: trả về số dư của một object `Coin`.
+2. `zero()`: tạo một object Coin với số dư bằng 0 (ví tiền trống)
+3. `destroy_zero()`: hủy một ví tiền trống. Một ví có số dư khác 0 không thể bị hủy và bạn cần chuyển hết coin trong đó đi nơi khác trước.

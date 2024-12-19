@@ -1,0 +1,173 @@
+# Giới thiệu về Coin module trong Sui 
+
+Các bạn nên ôn lại hai khái niệm quan trọng: generics và witness pattern nhé: 
+1. https://sui-bootcamp-2024.vercel.app/Basic_Move_Programming/Generics_and_phantom
+2. https://sui-bootcamp-2024.vercel.app/object_programming/One_timewitness
+
+Sau đó, chúng ta sẽ tìm hiểu về Coin và hàm create_currency:
+
+##  Coin module là gì?
+
+Module Coin trong Sui để quản lý digital asset. Nó hoạt động giống như chuẩn ERC-20 trên Ethereum cho phép bạn:
+
+- Tạo token mới
+- Chuyển token giữa các tài khoản
+- Gộp nhiều token thành một
+- Tách một token thành nhiều phần nhỏ hơn
+
+Tất cả các hoạt động này đều được thực hiện một cách an toàn và hiệu quả. Trong bài này này, chúng ta sẽ tìm hiểu cách module Coin được xây dựng và cách sử dụng nó trong thực tế.
+
+Lưu ý là: Module Coin không bao gồm mọi khía cạnh của token. Thông tin về số dư và tổng cung được lưu trữ ( supply total) sẽ nằm  trong một module khác là Balance, module này sẽ được giới thiệu ở phần tiếp theo..
+
+Cấu trúc của `Coin` struct có 2 fields: 
+
+- ID: dùng để phân biệt Coin instance
+- Balance: `Sui::balance` module biểu diễn số lượng coin
+
+```rust
+public struct Coin<phantom T> has key, store {
+    id: UID,
+    balance: Balance<T>
+}
+```
+
+Bên cạnh `Coin` struct, ta còn có CoinMetadata struct chứa các thông tin như decimals, name, symbol…. 
+
+```rust
+public struct CoinMetadata<phantom T> has key, store {
+    id: UID,
+    decimals: u8,
+    name: string::String,
+    symbol: ascii::String,
+    description: string::String,
+    icon_url: Option<Url>
+}
+
+```
+
+Tuy nhiên ngoài một object chứa thông tin coin, còn có một object khác là `TreasuryCap` struct dùng để cấp quyền mint hoặc burn coin. Bạn có thể hiểu nó đại loại như permission control, đảm bảo người holder đó có những quyền vụ như thế. 
+
+```rust
+public struct TreasuryCap<phantom T> has key, store {
+    id: UID,
+    total_supply: Supply<T>
+}
+```
+
+## Các functions chính trong coins 
+
+Module Coin cung cấp một số hàm để quản lý lifecycle( vòng đời) và các thao tác của Coin. Dưới đây là giới thiệu chi tiết về một số hàm quan trọng:
+
+**`balance`**: Hàm này lấy số dư của một Coin cụ thể, trả về kiểu dữ liệu **u64**.
+
+```rust 
+// function từ module coin 
+public fun balance<T>(coin: &Coin<T>): u64 {
+    coin.balance.value()
+}
+```
+
+**`create_currency`** Nếu các bạn đã xem video task 2 mình làm. Bạn sẽ thấy hàm này giúp các bạn tạo coin có kiểu T và trả về 2 values là 
+
+`TreasuryCap<T>` và `CoinMetadata<T>`.  Hai objects này được dùng để quản lý quyền mint (tạo) và burn (hủy) coin, cũng như lưu trữ metadata (thông tin mô tả), đảm bảo tính duy nhất của mỗi loại token thông qua cơ chế witness.
+
+```rust
+// function từ coin module 
+public fun create_currency<T: drop>(
+    witness: T,
+    decimals: u8,
+    symbol: vector<u8>,
+    name: vector<u8>,
+    description: vector<u8>,
+    icon_url: Option<Url>,
+    ctx: &mut TxContext
+): (TreasuryCap<T>, CoinMetadata<T>) {
+    // Ensure only one instance of type T
+    assert!(sui::types::is_one_time_witness(&witness), EBadWitness);
+
+    (
+        TreasuryCap {
+            id: object::new(ctx),
+            total_supply: balance::create_supply(witness)
+        },
+        CoinMetadata {
+            id: object::new(ctx),
+            decimals,
+            name: string::utf8(name),
+            symbol: ascii::string(symbol),
+            description: string::utf8(description),
+            icon_url
+        }
+    )
+}
+```
+
+`mint`: Hàm này tạo ra Coins mới và tăng total supply tương ứng, sau đó trả về Coins mới được tạo cho người gọi hàm.
+
+```
+public fun mint<T>(cap: &mut TreasuryCap<T>, value: u64, ctx: &mut TxContext): Coin<T> {
+    Coin {
+        id: object::new(ctx),
+        balance: cap.total_supply.increase_supply(value)
+    }
+}
+```
+
+`burn`: Hàm này dùng để destroy một Coin và giảm tổng cung tương ứng. TreasuryCap cấp cho người nắm giữ các quyền cụ thể để quản lý việc tạo (mint) và hủy (burn) coin, đảm bảo chỉ những người được ủy quyền mới có thể thực hiện các thao tác này.
+
+```rust
+public entry fun burn<T>(cap: &mut TreasuryCap<T>, c: Coin<T>): u64 {
+    let Coin { id, balance } = c;
+    id.delete();
+    cap.total_supply.decrease_supply(balance)
+}
+```
+
+**`join`**: Hàm này gộp hai Coin cùng loại thành một Coin duy nhất, đảm bảo số dư của Coin kết quả bằng tổng số dư của hai Coin ban đầu. Điều này giúp việc quản lý Coin dễ dàng hơn, đặc biệt khi người dùng có nhiều Coin cùng loại.
+
+```rust
+public entry fun join<T>(self: &mut Coin<T>, c: Coin<T>) {
+    let Coin { id, balance } = c;
+    id.delete();
+    self.balance.join(balance);
+}
+```
+
+`split`: Hàm này cho phép chia một Coin làm hai phần. Khi bạn muốn tách một số lượng token nhất định, hàm sẽ tạo ra một Coin mới chứa số lượng đó, và Coin ban đầu sẽ giữ lại phần còn lại. Ví dụ: nếu bạn có 100 token và muốn tách 30 token, bạn sẽ có một Coin mới chứa 30 token và Coin cũ giữ lại 70 token. Tính năng này rất hữu ích khi bạn cần chuyển một phần token cho người khác.
+
+```rust
+public fun split<T>(
+    self: &mut Coin<T>, split_amount: u64, ctx: &mut TxContext
+): Coin<T> {
+    take(&mut self.balance, split_amount, ctx)
+}
+```
+
+Code example: 
+
+```rust
+entry fun take_fee_on_sui_out(
+    fees: &mut Fees,
+    coin: Coin<SUI>,
+    ctx: &mut TxContext
+) {
+    let mut balance = coin.into_balance();
+
+    let fee_amount = balance.value() * 100 / 10_000;
+    let fee_balance = balance.split(fee_amount);
+    fees.balance.join(fee_balance);
+
+    let c = coin::from_balance(balance, ctx);
+    pay::keep(c, ctx);
+}
+```
+
+# Practice
+
+Viết code để tạo 1 fungible token với 1 smart contract  có khả năng mint, burn. Bạn sẽ phải hiểu One Time Witness pattern với `witness` có tên là HELLO, và sẽ được tự động tạo ra bởi hàm `init`.
+
+Hàm `init` gọi đến `coin::create_currency` để lấy `TreasuryCap` và `CoinMetadata`. Tham số được truyền vào hàm là các trường của object `CoinMetadata`, bao gồm tên, ký hiệu, icon URl, ...
+
+`CoinMetadata` sẽ ngay lập tức bị freeze thông qua hàm `transfer::freeze_object`, và nó trở thành shared immutable object và nó có thể được đọc bởi bất kỳ địa chỉ nào.
+
+TreasuryCap Capability đã được sử dụng như 1 cách để quản lý quyền `mint` và `burn` để tạo và tiêu huỷ obj `Coin<HELLO>`.

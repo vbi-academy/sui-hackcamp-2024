@@ -1,0 +1,132 @@
+Tiếp theo đây là các khái niệm cơ bản mà dev cần nắm để bắt đầu với Su Move. Trong bài học này, chúng ta sẽ đi sâu vào một chủ đề thực tế hơn và một trong phần phổ biến nhất trong blockchain - Token. 
+
+# Token là gì ? 
+
+Token đóng vai trò quan trọng trong crypto world, như những đại diện số hóa cho giá trị hoặc tài sản (Asserts) . Chúng giống như những certificates  cho phép sở hữu hoặc truy cập vào các tài sản khác nhau, cả hữu hình và ảo, tất cả đều được ghi lại an toàn trên blockchain. Một chuẩn phổ biến cho các token trên blockchain Ethereum là ERC-20. 
+
+Token là tài sản kỹ thuật số được lưu trữ trên blockchain (một loại sổ cái điện tử). Token có thể đại diện cho nhiều thứ có giá trị như:
+
+- Digital token
+- Cổ phần công ty
+- Voting power
+- Vật phẩm trong game
+
+
+## ERC-20 là gì ?
+
+ERC-20 là một trong những đặc tả đầu tiên về cách triển khai Token, tiêu chuẩn ERC-20 định nghĩa một tập hợp các hàm interface mà các token trên blockchain Ethereum phải tuân thủ. Các hàm này cung cấp framework chung để tương tác với token và đảm bảo khả năng tương tác giữa các ứng dụng và ví khác nhau. Dưới đây là tóm tắt các hàm interface ERC-20 quan trọng nhất:
+
+1. `totalSupply()`: Hàm này trả về tổng số token đang lưu hành.
+2. `balanceOf(address _owner)`: Cho phép kiểm tra số dư token sở hữu bởi một địa chỉ Ethereum cụ thể.
+3. `transfer(address _to, uint256 _value)`: Hàm này cho phép chuyển một số lượng token cụ thể từ địa chỉ người gửi sang địa chỉ khác.
+
+
+## Sui Coin 
+
+Sui move có một bộ thư viện Coin với địa chỉ là 0x2, cho phép dev có thể define và manage token dễ dàng mà không phải rewrite nhiều lần. Một Token trên Sui network gọi là Coin. 
+
+Cách thiết kế Coin trong Sui Move được lấy cảm hứng từ cách tiền hoạt động trong đời thực. Giống như khi bạn cầm một tờ tiền thật, bạn có thể bỏ vào ví và lấy ra khi cần dùng. Điều này khác với cách token hoạt động trong các blockchain khác như Ethereum (EVM). Ở đó, số dư token của bạn (ví dụ như USDC) được lưu trữ trong một smart contract trung tâm, giống như cách ngân hàng lưu trữ số dư tài khoản của khách hàng.
+
+Cách thiết kế này thường gây nhầm lẫn cho người mới sử dụng crypto. Họ thường nghĩ rằng ví của họ (như ví phần cứng) thực sự chứa các token bên trong, nhưng thực tế không phải vậy.
+
+Trong Sui Move, Coin được thiết kế trực quan và dễ hiểu hơn - khi user nhận Coin, các Coin này sẽ được lưu trữ trong một object (có thể xem như ví) thuộc quyền sở hữu của user đó. Sau này họ có thể dễ dàng lấy Coin từ object này ra và sử dụng theo ý muốn.
+
+
+### Creating a new Coin type
+
+Trong Sui Move, chỉ cần một module (smart contract) duy nhất mà các developer có thể gọi để tạo và quản lý coin của họ. Để phân biệt giữa các loại coin khác nhau được tạo bởi các developer khác nhau, module Coin sử dụng generics (type arguments): 
+
+```rust
+/// Get immutable reference to the balance of a coin.
+public fun balance<T>(coin: &Coin<T>): &Balance<T> {
+    &coin.balance
+}
+```
+
+Hàm trên được dùng để kiểm tra số dư trong object ví Coin của user. Để ý rằng có `<T>` ở cuối tên hàm. Đây là tham số kiểu (type argument) để chỉ định loại ví coin nào đang được gọi, ví dụ có thể là `Coin<MYCOIN>` hoặc `Coin<YourCoin>`. Để tạo một Coin, dev cần define nó như một struct trong module: 
+
+
+```
+module my_coin::my_coin {
+	struct MYCOIN has drop {}
+}
+```
+
+Đồng SUI token được tạo ra bằng cách tương tự. Để tạo một đồng token mới, bạn chỉ cần sử dụng hàm coin::create_currency trong hàm init. Lưu ý rằng bạn sẽ cần một đối tượng one time witness (OTW) cho loại token của mình: 
+
+```
+fun init(otw: MYCOIN, ctx: &mut TxContext) {
+    let (treasury_cap, metadata) = coin::create_currency(
+        otw,
+        9,
+        b"MYCOIN",
+        b"MyCoin",
+        b"My Coin description",
+        option::some(url::new_unsafe(string::utf8(bb"https://mycoin.com/logo.png"))),
+        ctx,
+    );
+    transfer::public_freeze_object(metadata);
+    transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+}
+```
+
+Khi bạn tạo một coin bằng hàm `coin::create_currency`, bạn sẽ nhận được hai thứ quan trọng:
+
+1. Một metadata object chứa thông tin cơ bản về coin:
+- Symbol (ký hiệu viết tắt của coin)
+- Tên đầy đủ
+- Mô tả
+- URL của logo
+
+Metadata này giúp các ứng dụng và website hiển thị coin. Bạn có thể:
+
+- Freeze (đóng băng) metadata để không thể thay đổi sau này, hoặc
+- Giữ quyền kiểm soát để có thể cập nhật trong tương lai
+
+
+2. Một TreasuryCap object cho phép bạn quản lý coins 
+
+Sau khi tạo coin, bạn có thể bắt đầu sử dụng nó bằng cách tham chiếu đến type của nó (ví dụ MYCOIN) khi sử dụng các hàm coin.
+
+```rust
+public fun my_coin_balance(coin: &Coin<MYCOIN>): &Balance<MYCOIN> {
+    coin::balance<MYCOIN>(coin)
+}
+```
+
+
+### TreasuryCap object
+
+Mình có hàm sau: 
+
+```rust
+entry fun mint(treasury_cap: &mut TreasuryCap<MYCOIN>, ctx: &mut TxContext) {
+    let coins = coin::mint(treasury_cap, 1000, ctx);
+    // Do something with the coins
+}
+```
+
+Hàm coin::mint tạo một object Coin (ví) mới. Các object được sở hữu sẽ được xác minh khi được truyền vào như tham số của giao dịch và chỉ chủ sở hữu mới có thể thực hiện điều này. Trong trường hợp này, chỉ tài khoản sở hữu `TreasuryCap` có thể gọi hàm mint. 
+
+TreasuryCap có một  type agrument để xác định loại coin mà treasury cap quản lý. Cuối cùng là  coin::mint không cần chỉ định Type argument  vì trình biên dịch có thể suy ra điều đó từ treasury_cap.
+
+
+```rust 
+
+fun init(otw: MYCOIN, ctx: &mut TxContext) {
+    let (treasury_cap, metadata) = coin::create_currency(
+        otw,
+        9,
+        b"MYCOIN",
+        b"MyCoin",
+        b"My Coin description",                       
+        option::some(url::new_unsafe(string::utf8(bb"https://mycoin.com/logo.png"))),
+        ctx,
+    );
+    coin::mint_and_transfer(treasury_cap, 1000000, tx_context::sender(ctx), ctx);
+    
+    transfer::public_freeze_object(metadata);
+    transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+}
+
+```
