@@ -102,7 +102,8 @@ public fun create_currency<T: drop>(
 }
 ```
 
-`mint`: Hàm này tạo ra Coins mới và tăng total supply tương ứng, sau đó trả về Coins mới được tạo cho người gọi hàm.
+### `mint`: 
+Hàm này tạo ra Coins mới và tăng total supply tương ứng, sau đó trả về Coins mới được tạo cho người gọi hàm.
 
 ```
 public fun mint<T>(cap: &mut TreasuryCap<T>, value: u64, ctx: &mut TxContext): Coin<T> {
@@ -113,7 +114,8 @@ public fun mint<T>(cap: &mut TreasuryCap<T>, value: u64, ctx: &mut TxContext): C
 }
 ```
 
-`burn`: Hàm này dùng để destroy một Coin và giảm tổng cung tương ứng. TreasuryCap cấp cho người nắm giữ các quyền cụ thể để quản lý việc tạo (mint) và hủy (burn) coin, đảm bảo chỉ những người được ủy quyền mới có thể thực hiện các thao tác này.
+### `burn`: 
+Hàm này dùng để destroy một Coin và giảm tổng cung tương ứng. TreasuryCap cấp cho người nắm giữ các quyền cụ thể để quản lý việc tạo (mint) và hủy (burn) coin, đảm bảo chỉ những người được ủy quyền mới có thể thực hiện các thao tác này.
 
 ```rust
 public entry fun burn<T>(cap: &mut TreasuryCap<T>, c: Coin<T>): u64 {
@@ -123,7 +125,8 @@ public entry fun burn<T>(cap: &mut TreasuryCap<T>, c: Coin<T>): u64 {
 }
 ```
 
-**`join`**: Hàm này gộp hai Coin cùng loại thành một Coin duy nhất, đảm bảo số dư của Coin kết quả bằng tổng số dư của hai Coin ban đầu. Điều này giúp việc quản lý Coin dễ dàng hơn, đặc biệt khi người dùng có nhiều Coin cùng loại.
+### **`join`**:
+ Hàm này gộp hai Coin cùng loại thành một Coin duy nhất, đảm bảo số dư của Coin kết quả bằng tổng số dư của hai Coin ban đầu. Điều này giúp việc quản lý Coin dễ dàng hơn, đặc biệt khi người dùng có nhiều Coin cùng loại.
 
 ```rust
 public entry fun join<T>(self: &mut Coin<T>, c: Coin<T>) {
@@ -133,7 +136,9 @@ public entry fun join<T>(self: &mut Coin<T>, c: Coin<T>) {
 }
 ```
 
-`split`: Hàm này cho phép chia một Coin làm hai phần. Khi bạn muốn tách một số lượng token nhất định, hàm sẽ tạo ra một Coin mới chứa số lượng đó, và Coin ban đầu sẽ giữ lại phần còn lại. Ví dụ: nếu bạn có 100 token và muốn tách 30 token, bạn sẽ có một Coin mới chứa 30 token và Coin cũ giữ lại 70 token. Tính năng này rất hữu ích khi bạn cần chuyển một phần token cho người khác.
+### `split`: 
+
+Hàm này cho phép chia một Coin làm hai phần. Khi bạn muốn tách một số lượng token nhất định, hàm sẽ tạo ra một Coin mới chứa số lượng đó, và Coin ban đầu sẽ giữ lại phần còn lại. Ví dụ: nếu bạn có 100 token và muốn tách 30 token, bạn sẽ có một Coin mới chứa 30 token và Coin cũ giữ lại 70 token. Tính năng này rất hữu ích khi bạn cần chuyển một phần token cho người khác.
 
 ```rust
 public fun split<T>(

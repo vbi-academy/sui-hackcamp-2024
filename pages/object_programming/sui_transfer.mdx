@@ -84,7 +84,9 @@ Cùng review lại thì  Freeze- đóng băng một object để chuyển nó v�
 
 ```
 // File: sui-framework/sources/transfer.move
-public fun freeze_object&lt;T: key&gt;(obj: T);
+public fun freeze_object<T: key>(obj: T) {
+    freeze_object_impl(obj)
+}
 ```
 
 Bây giờ chúng ta sẽ xem một ví dụ về cách tạo và freeze đối tượng Config bởi admin:
