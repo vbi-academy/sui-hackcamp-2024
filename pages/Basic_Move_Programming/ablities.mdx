@@ -170,7 +170,49 @@ Ví dụ khi sử dụng `drop`:
 
 
 ## No abilities
+
+![](https://miro.medium.com/v2/resize:fit:1200/format:webp/0*ZOu6Or82HZB-C4q1)
+
 Khi một struct không được gán bất kỳ ability nào, nó sẽ có những hạn chế đặc biệt - không thể xóa, không thể sao chép và không thể lưu trong bộ nhớ. Chúng ta gọi loại struct này là *Hot Potato* (củ khoai tây nóng).
 
 Tên gọi này nghe có vẻ vui, nhưng nó giúp ta dễ hiểu: giống như khi bạn cầm một củ khoai tây nóng, bạn chỉ có thể chuyền nó đi và phải xử lý nó ngay lập tức. Hot Potato là một kỹ thuật thiết kế quan trọng trong Move và bạn có thể tìm hiểu thêm trong tài liệu này: 
+Ví dụ, struct sau đây là một hot potato:
 
+```rust 
+public struct Request {}
+```
+
+Mô hình này thường được sử dụng cho các khoản vay flash loan, yêu cầu tiền phải được hoàn trả trong cùng một giao dịch. Do Sui Move không chấp nhận dữ liệu call data thô như Solidity, bạn cần sử dụng *(PTB)*. PTB tương tự như một gói flashbot, chỉ khác là các giao dịch có thể được "liên kết" và chấp nhận đầu ra của các giao dịch trước đó. Chúng được thực thi như một giao dịch duy nhất.
+
+Điều này có nghĩa là "hot potato" có thể được xử lý ở một hàm khác với hàm tạo ra nó. Tuy nhiên, có một điều kiện quan trọng: **chỉ các hàm trong cùng một module mới có thể xử lý "hot potato" đó**. Đây là một cách giới hạn hữu ích mà chúng ta có thể áp dụng cho các khoản vay flash.
+
+Sau đây là một ví dụ đơn giản: Một chủ phòng trưng bày muốn cho phép mọi người mượn tác phẩm nghệ thuật tạm thời để tạo bản sao cho chính họ. Vì tác phẩm nghệ thuật phải được trả lại ngay lập tức, chúng ta sẽ sử dụng mô hình hot potato để xử lý trường hợp này.
+
+```rust 
+/// A `Phone`. Can be purchased in a store.
+public struct Phone has key, store { id: UID }
+
+/// A ticket that must be paid to purchase the `Phone`.
+public struct Ticket { amount: u64 }
+
+/// Return the `Phone` and the `Ticket` that must be paid to purchase it.
+public fun purchase_phone(ctx: &mut TxContext): (Phone, Ticket) {
+    (
+        Phone { id: object::new(ctx) },
+        Ticket { amount: 100 }
+    )
+}
+
+/// The customer may pay for the `Phone` with `BonusPoints` or `SUI`.
+public fun pay_in_bonus_points<T>(ticket: Ticket, payment: Coin<T>) {
+    let Ticket { amount } = ticket;
+    assert!(payment.value() == amount);
+}
+
+///for the `Phone` with `USD`.
+public fun pay_in_usd(ticket: Ticket, payment: Coin<USDT>) {
+    let Ticket { amount } = ticket;
+    assert!(payment.value() == amount);
+}
+
+```
