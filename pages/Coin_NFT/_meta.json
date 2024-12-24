@@ -3,6 +3,7 @@
   "coin_module": "Coin module",
   "Balance_module": "Balance module",
   "Coin_and_balance": "Coin và Balance",
+  "simple_airdrop": "Practice 1: Build Sui airdrop contract",
   "Intro_to_nft": "NFT trong Sui move",
   "publisher": "Publisher object",
   "Sui_object_display": "Sui object display"

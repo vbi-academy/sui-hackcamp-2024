@@ -631,6 +631,46 @@ Nó sử dụng struct `String` để lưu trữ chuỗi, về bản chất vẫ
 Giới hạn này chỉ cho phép 122 ký tự có thể in được đầu tiên. Sau khi xác thực thành công, hệ thống trả về `option::some` và giải nén chuỗi thông qua hàm option::destroy_some. Trong trường hợp thất bại, nó sẽ hủy thực thi và trả về option::none().
 
 
+Đây là code example. Bạn có thể chạy lệnh `sui move test`: 
+
+```rust
+
+module sui_data_types::string {
+    use std::string;
+    use std::debug;
+
+    #[test]
+    fun test_string_works() {
+        // create a string from 'utf-8' bytes
+        let s1 = string::utf8(b"hello");
+        debug::print(&s1);
+        assert!(s1 == string::utf8(b"hello"), 0);
+
+        // append a 'utf-8' to s1
+        string::append_utf8(&mut s1, b" world");
+        assert!(s1 == string::utf8(b"hello world"), 1);
+
+        // get the substring of a string
+        let s1_sub = string::sub_string(&s1, 0, 5);     // [0, 5) i.e. 0, 1, 2, 3, 4
+        debug::print(&s1_sub);  // "hello"
+
+        // join 2 strings
+        let s1 = string::utf8(b"hello");
+        let s2 = string::utf8(b" abhi");
+        string::append(&mut s1, s2);
+        assert!(s1 == string::utf8(b"hello abhi"), 2);
+
+        // check if empty
+        assert!(!string::is_empty(&s1), 3);
+
+        // get the bytes of a string
+        let b1 = string::bytes(&s1);
+        debug::print(b1);       // print the bytes of "hello abhi"
+}
+}
+```
+
+
 
 ## Option Type 
 Option là một kiểu dữ liệu dùng để represent một cái giá trị có thể hoặc không cần tồn tại. Khái niệm từ Option mượn từ ngôn ngữ rust. Bạn có thể học qua khoá học rust bootcamp để hiểu về type này nha. 

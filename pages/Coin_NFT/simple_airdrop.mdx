@@ -1,0 +1,67 @@
+# Build simple Coin airdrop module in Sui ( bài đọc thêm) 
+
+Review lại các bài học trước: 
+
+- Bạn đã học được cách tạo coin với `coin::create_currency` và trả về `TreasuryCap` được dùng để mint/burn/update metadata.
+- Thứ hai bạn đã được làm quen với coins module và cả balance nữa. Nôm na là balance giống cash money còn coins là wallet.
+- `TreasuryCap` và `Metadata` objects có thể được lưu trữ để truy cập theo chương trình mà không cần tài khoản owner  phải liên tục ký các giao dịch
+
+Để xây dựng module airdrop cho token VBICamp, chúng ta cần thực hiện các bước sau:
+1. Đầu tiên, chúng ta sẽ tạo một module mới có tên là `vbicamp_drop` để quản lý token LearnCamp
+2. Tiếp theo, chúng ta sẽ thiết lập các thông số cơ bản của token như tên, symbol và decimals, đồng thời lưu trữ object `TreasuryCap` để kiểm soát việc mint token
+3. Chúng ta sẽ tạo một hàm cho phép những người dùng được phép mint token VBICamp. Người dùng chỉ có thể mint token nếu họ nằm trong danh sách được phép (sử dụng hàm kiểm tra đơn giản `is_allowlisted`)
+4. Cuối cùng, mỗi khi có người mint token mới, chúng ta sẽ ghi lại thông tin bằng cách gửi một event `MintVBICampEvent` chứa thông tin về người mint và số lượng token đã tạo
+
+
+```rust
+module 0x123::vbicamp_drop {
+    public struct VBICAMP has drop {}
+
+    public struct VBICampTreasuryCapHolder has key {
+        id: UID,
+        treasury_cap: TreasuryCap<VBICAMP>,
+    }
+
+    public struct MintVBICampEvent has copy, drop {
+        user: address,
+        amount: u64,
+    }
+
+    fun init(otw: VBICAMP, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency(
+            otw,
+            9,
+            b"HACK",
+            b"VBICamp asset",
+            b"Digital asset for VBI Blockchain Camp",
+            option::none(),
+            ctx,
+        );
+        transfer::public_freeze(metadata);
+
+        let treasury_cap_holder = VBICampTreasuryCapHolder {
+            id: object::new(ctx),
+            treasury_cap,
+        };
+        transfer::share_object(treasury_cap_holder);
+    }
+
+    entry fun mint(
+        treasury_cap_holder: &mut VBICampTreasuryCapHolder, 
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx)
+        let treasury_cap = &mut treasury_cap_holder.treasury_cap;
+        coin::mint_and_transfer(treasury_cap, amount, sender, ctx);
+        
+        event::emit(MintVBICampEvent {
+            user: sender,
+            amount,
+        })
+    }
+}
+```
+
+Hoặc bạn có thể đọc sâu thêm về: 
+1. https://github.com/interest-protocol/sui-defi/blob/main/airdrop/sources/core.move#L80
