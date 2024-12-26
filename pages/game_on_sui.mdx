@@ -29,6 +29,8 @@ Bây giờ chúng ta sẽ áp dụng các kiến thức đó để tạo ra mộ
 sui move new game_on_sui
 ```
 
+Link code: https://github.com/CocDap/game_on_move/tree/main
+
 ### Step 2: Định nghĩa các Objects 
 
 + **Hero**: Mô tả nhân vật của người chơi 
@@ -112,6 +114,8 @@ public struct GameAdmin has key {
 
 ```
 
+Link code: https://github.com/CocDap/game_on_move/tree/step2
+
 ### Step 3: Định nghĩa Events
 
 + **BoarSlainEvent**: Sự kiện khi người chơi hạ gục quái vật 
@@ -134,6 +138,8 @@ public struct BoarSlainEvent has copy, drop {
 
 }
 ```
+
+Link code: https://github.com/CocDap/game_on_move/tree/step3
 
 ### Step 4: Định nghĩa hằng số và lỗi 
 
@@ -166,7 +172,7 @@ const ENO_SWORD: u64 = 4;
 const EWRONG_GAME_PLAY: u64 = 5;
 ```
 
-
+Link code: https://github.com/CocDap/game_on_move/tree/step4
 
 
 ### Step 5: Tạo game info và game admin 
@@ -206,7 +212,7 @@ fun create(ctx: &mut TxContext){
 
 }
 ```
-
+Link code: https://github.com/CocDap/game_on_move/tree/step5
 
 ### Step 6: Tạo game Hero và Sword 
 
@@ -264,6 +270,8 @@ public fun create_hero(game: &GameInfo, sword: Sword, ctx: &mut TxContext): Hero
 
 ```
 
+Link code: https://github.com/CocDap/game_on_move/tree/step6
+
 ### Step 7: Tạo quái vật Boar
 
 + `Boar`: Lưu trữ thông tin quái vật -> Transfer Object 
@@ -289,6 +297,8 @@ public entry fun send_boar(
     )
 }
 ```
+
+Link code: https://github.com/CocDap/game_on_move/tree/step7
 
 
 ### Step 8: Player đánh quái vật boar
@@ -385,6 +395,8 @@ public fun level_up_sword(sword: &mut Sword, amount: u64) {
 
 ```
 
+Link code: https://github.com/CocDap/game_on_move/tree/step8
+
 ### Step 9: Hàm tạo vật phẩm hồi máu 
 
 + `Potion`: Lưu trữ thông tin vật phẩm hồi máu -> Transfer Object 
@@ -408,6 +420,8 @@ public entry fun send_potion(
     )
 }
 ```
+
+Link code: https://github.com/CocDap/game_on_move/tree/step9
 
 ### Step 10: Hàm liên quan tới vật phẩm trang bị 
 
@@ -434,6 +448,8 @@ public fun remove_sword(hero: &mut Hero): Sword {
 }
 ```
 
+Link code: https://github.com/CocDap/game_on_move/tree/step10
+
 ### Step 11: Tạo hàm lấy payment
 
 + Chỉ có `admin` mới có thể lấy payment 
@@ -452,6 +468,8 @@ public entry fun take_payment(admin: &GameAdmin, game: &mut GameInfo, ctx: &mut 
 }
 
 ```
+
+Link code: https://github.com/CocDap/game_on_move/tree/step11
 
 ### Step 12: Viết test case
 
@@ -544,6 +562,7 @@ test_scenario::end(scenario_val);
 
 ```
 
+Link code: https://github.com/CocDap/game_on_move/tree/step12
 
 
 ## Cách publish và chạy game thông qua SUI CLI
