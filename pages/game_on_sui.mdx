@@ -1,0 +1,814 @@
+# Game on Sui 
+
+## Giới thiệu 
+Sau khi chúng ta đã học các phần cơ bản của ngôn ngữ lập trình Move, đặc biệt là cách để tạo ra các `Objects` trên Sui.
+Bây giờ chúng ta sẽ áp dụng các kiến thức đó để tạo ra một game trên Sui 
+
+## Mô tả Game Play 
+
+
+1. **Tạo nhân vật(Player)**:
+   - Người chơi có thể tạo nhân vật với các thuộc tính cơ bản
+   - Mỗi nhân vật sẽ là một Object riêng biệt trên Sui blockchain
+   - Người chơi sở hữu hoàn toàn nhân vật của mình
+2. **Chiến đấu**:
+   - Người chơi có thể cho nhân vật tham gia các trận chiến với quái vật 
+   - Kết quả trận đấu được lưu trữ trên blockchain
+
+3. **Phát triển nhân vật**:
+   - Nhân vật có thể tăng cấp thông qua các trận đấu (đánh quái, ... ) 
+   - Các chỉ số của nhân vật được cập nhật và lưu trữ trên chain
+   - Người chơi có thể trang bị các vật phẩm cho nhân vật ví dụ Sword, ... 
+
+
+## Code 
+
+### Step 1: Tạo project 
+
+```bash
+sui move new game_on_sui
+```
+
+### Step 2: Định nghĩa các Objects 
+
++ **Hero**: Mô tả nhân vật của người chơi 
++ **Sword**: Vật phẩm của người chơi 
++ **Boar**: Quái vật heo
++ **GameInfo**: Thông tin của game 
++ **GameAdmin**: Admin quản lý game 
++ **Potion**: Vật phẩm hồi máu 
+
+
+
+```rust
+/// hero.move
+/// -------------------------------------------------------------------------------
+/// -------------------------------ĐỊNH NGHĨA OBJECT-------------------------------
+/// -------------------------------------------------------------------------------
+
+// Tạo 1 object Sword
+
+public struct Sword has key, store {
+    id: UID,
+    // Sức mạnh phép thuật 
+    magic: u64,
+    // Sức mạnh của Sword trong game 
+    strength: u64,
+    game_id: ID
+
+}
+// Tạo 1 object Hero 
+
+public struct Hero has key, store {
+    id: UID,
+    // Hit point - Máu của Hero 
+    hp: u64,
+    // Điểm kinh nghiệm của hero 
+    experience: u64,
+    // Hero có Sword 
+    sword: Option<Sword>,
+    // Game id mà user đang chơi 
+    game_id: ID,
+}
+
+// Tạo 1 object "Máu" -> Sử dụng để hồi HP 
+public struct Potion has key, store {
+    id: UID,
+    // Lượng hồi máu
+    potency: u64,
+    // Game id mà user đang chơi 
+    game_id: ID
+
+}
+
+// Tạo 1 object Quái Boar
+
+public struct Boar has key {
+    id: UID,
+    // Máu của quái tối đa bao nhiêu 
+    // HP =0 -> quái chết 
+    hp: u64,
+    // Sức mạnh của quái 
+    strength: u64,
+    // Game id 
+    game_id: ID
+
+}
+
+// Tạo GameAdmin
+public struct GameInfo has key {
+    id: UID,
+    admin: address,
+    payments: Balance<SUI>,
+}
+
+public struct GameAdmin has key {
+    id: UID,
+    boars_created: u64,
+    potions_created: u64,
+    game_id: ID
+
+}
+
+```
+
+### Step 3: Định nghĩa Events
+
++ **BoarSlainEvent**: Sự kiện khi người chơi hạ gục quái vật 
+
+```rust
+/// hero.move
+
+/// -------------------------------------------------------------------------------
+/// -------------------------------ĐỊNH NGHĨA EVENT--------------------------------
+/// -------------------------------------------------------------------------------
+
+public struct BoarSlainEvent has copy, drop {
+    // player nào hạ gục boar
+    slayer_address: address,
+    // ID của hero mà user đang control 
+    hero: ID,
+    // ID của boar đã bị hạ gục
+    boar: ID,
+    game_id: ID
+
+}
+```
+
+### Step 4: Định nghĩa hằng số và lỗi 
+
+```rust
+/// hero.move
+
+/// -------------------------------------------------------------------------------
+/// ----------------------ĐỊNH NGHĨA CÁC HẰNG SỐ ----------------------------------
+/// -------------------------------------------------------------------------------
+const MAX_HP: u64 = 1000;
+
+const MAX_MAGIC: u64 = 10;
+
+const MIN_SWORD_COST: u64 = 100;
+
+
+/// -------------------------------------------------------------------------------
+/// -------------------------------ĐỊNH NGHĨA LỖI----------------------------------
+/// -------------------------------------------------------------------------------
+
+const EBOAR_WON: u64 = 0;
+
+const EHERO_TIRED: u64 = 1;
+const ENOT_ADMIN: u64 = 2;
+
+const EINSUFFICIENT_FUNDS: u64 = 3; 
+
+const ENO_SWORD: u64 = 4;
+
+const EWRONG_GAME_PLAY: u64 = 5;
+```
+
+
+
+
+### Step 5: Tạo game info và game admin 
+
++ `GameInfo`: Lưu trữ thông tin game -> Share Object 
++ `GameAdmin`: Lưu trữ thông tin game admin -> Transfer Object 
+
+```rust
+/// hero.move
+public entry fun new_game(ctx: &mut TxContext) {
+    create(ctx);
+}
+
+/// -------------------------------------------------------------------------------
+/// -----------------HELPER FUNCTION CHO VIỆC TẠO GAME ADMIN VÀ GAME INFO----------
+/// -------------------------------------------------------------------------------
+fun create(ctx: &mut TxContext){
+    let sender = tx_context::sender(ctx);
+    let id = object::new(ctx);
+    let game_id = object::uid_to_inner(&id);
+
+    transfer::share_object(GameInfo { 
+        id, 
+        admin: sender,
+        payments: balance::zero()
+    });
+
+    transfer::transfer(
+        GameAdmin {
+            id: object::new(ctx),
+            boars_created: 0,
+            potions_created: 0,
+            game_id,
+        }, 
+        sender
+    )
+
+}
+```
+
+
+### Step 6: Tạo game Hero và Sword 
+
++ Hero Object: Lưu trữ thông tin hero -> Transfer Object 
++ Sword Object: Lưu trữ thông tin sword -> Transfer Object 
+
+
+```rust
+/// hero.move
+
+public entry fun acquire_hero(game: &mut GameInfo, payment: Coin<SUI>, ctx: &mut TxContext) {
+    let sword = create_sword(game, payment, ctx);
+    let hero = create_hero(game, sword, ctx);
+    transfer::transfer(hero, tx_context::sender(ctx))
+
+}
+
+/// -------------------------------------------------------------------------------
+/// ---------------------HELPER FUNCTION TẠO HERO VÀ SWORD-------------------------
+/// -------------------------------------------------------------------------------
+
+// Tạo Sword
+public fun create_sword(game: &mut GameInfo, payment: Coin<SUI>, ctx: &mut TxContext): Sword {
+    // Lấy số lượng coin hiện tại mà user sở hữu 
+    let value = coin::value(&payment);
+
+    assert!(value >= MIN_SWORD_COST, EINSUFFICIENT_FUNDS);
+
+    // pay coin cho admin 
+    coin::put(&mut game.payments, payment);
+
+    // Công thức tính magic 
+    let magic =  (value - MIN_SWORD_COST)/ MIN_SWORD_COST;
+    Sword {
+        id: object::new(ctx),
+        magic: std::u64::min(magic, MAX_MAGIC),
+        strength: 1,
+        game_id: object::id(game)
+    }
+
+}
+
+// Tạo hero 
+public fun create_hero(game: &GameInfo, sword: Sword, ctx: &mut TxContext): Hero {
+    // Kiểm tra có cùng game id hay không 
+    assert!(object::id(game) == sword.game_id, EWRONG_GAME_PLAY);
+    Hero {
+        id: object::new(ctx),
+        hp: 100,
+        experience: 0,
+        sword: option::some(sword),
+        game_id: object::id(game),
+    }
+}
+
+```
+
+### Step 7: Tạo quái vật Boar
+
++ `Boar`: Lưu trữ thông tin quái vật -> Transfer Object 
++ Chỉ có admin mới tạo được quái vật 
+
+```rust
+// Admin tạo boar cho player 
+public entry fun send_boar(
+    game: &GameInfo,
+    admin: &mut GameAdmin,
+    hp: u64,
+    strength: u64,
+    player: address,
+    ctx: &mut TxContext
+) {
+    assert!(object::id(game) == admin.game_id, EWRONG_GAME_PLAY);
+
+    admin.boars_created = admin.boars_created + 1;
+    // send boars to the designated player
+    transfer::transfer(
+        Boar { id: object::new(ctx), hp, strength, game_id: object::id(game) },
+        player
+    )
+}
+```
+
+
+### Step 8: Player đánh quái vật boar
+
+```rust
+/// -------------------------------------------------------------------------------
+/// --------------ENTRY FUNCTION LIÊN QUAN TỚI HÀNH ĐỘNG CỦA HERO------------------
+/// -------------------------------------------------------------------------------
+
+// Hàm đánh quái 
+public entry fun slay(game: &GameInfo, hero: &mut Hero, boar: Boar, ctx: &TxContext){
+
+    // Kiểm tra game ID của hero 
+    assert!(object::id(game) == hero.game_id, EWRONG_GAME_PLAY);
+    // Kiểm tra game ID của Boar
+    assert!(object::id(game) == boar.game_id, EWRONG_GAME_PLAY);
+
+    // Destructure boar object 
+    let Boar {id: boar_id, strength: boar_strength, hp, game_id: _} = boar;
+    let hero_strength = hero_strength(hero);
+
+    assert!(hero_strength !=0, EHERO_TIRED);
+
+    let mut boar_hp = hp;
+
+    let mut hero_hp = hero.hp;
+
+    // Tấn công boar cho đến khi HP của Boar còn 0 
+    while (boar_hp > hero_strength) {
+        // đầu tiên hero attack trước 
+        boar_hp = boar_hp - hero_strength; 
+        // sau đó boar attack 
+        assert!(hero_hp >= boar_strength, EBOAR_WON);
+
+        hero_hp = hero_hp - boar_strength;
+
+    };
+
+    // lưu lại HP của Hero sau khi tấn công boar
+
+    hero.hp = hero_hp;
+    // Nhận kinh nghiệm bằng lượng HP của boar sau khi đánh bại 
+    hero.experience = hero.experience + hp;
+    
+    // Tăng sức mạnh của Sword lên 1 đơn vị 
+
+    if (option::is_some(&hero.sword)) {
+        level_up_sword(option::borrow_mut(&mut hero.sword), 1)
+    };
+    event::emit(BoarSlainEvent {
+        slayer_address: tx_context::sender(ctx),
+        hero: object::uid_to_inner(&hero.id),
+        boar: object::uid_to_inner(&boar_id),
+        game_id: object::id(game)
+    });
+
+    object::delete(boar_id);
+
+}
+
+/// -------------------------------------------------------------------------------
+/// ---------------------HELPER FUNCTION CHO HÀM SLAY(ĐÁNH QUÁI)-------------------
+/// -------------------------------------------------------------------------------
+
+// Sức mạnh của Sword khi tấn công 
+public fun sword_strength(sword: &Sword): u64 {
+    sword.magic + sword.strength
+}
+
+// Sức mạnh của Hero khi tấn công 
+public fun hero_strength(hero: &Hero): u64 {
+    // Nếu hero có HP = 0 thì không thể attack 
+
+    if (hero.hp == 0) {
+        return 0
+    };
+    // Nếu hero có sử dụng Sword -> lấy sức mạnh của Sword 
+    let  sword_strength  = if (option::is_some(&hero.sword)) {
+        sword_strength(option::borrow(&hero.sword))
+    }
+    else {
+        0
+    };
+
+    // Sức mạnh của hero 
+    (hero.experience * hero.hp) + sword_strength
+}
+
+// Tăng cấp cho Sword 
+public fun level_up_sword(sword: &mut Sword, amount: u64) {
+    sword.strength =  sword.strength + amount;
+}
+
+
+```
+
+### Step 9: Hàm tạo vật phẩm hồi máu 
+
++ `Potion`: Lưu trữ thông tin vật phẩm hồi máu -> Transfer Object 
++ Chỉ có admin mới tạo được vật phẩm hồi máu 
+
+```rust
+// Admin tạo potion (bình máu) cho player 
+public entry fun send_potion(
+    game: &GameInfo,
+    potency: u64,
+    player: address,
+    admin: &mut GameAdmin,
+    ctx: &mut TxContext
+) {
+    assert!(object::id(game) == admin.game_id, EWRONG_GAME_PLAY);
+    admin.potions_created = admin.potions_created + 1;
+    // send potion to the designated player
+    transfer::transfer(
+        Potion { id: object::new(ctx), potency, game_id: object::id(game) },
+        player
+    )
+}
+```
+
+### Step 10: Hàm liên quan tới vật phẩm trang bị 
+
+```rust
+/// Phục hồi máu cho hero 
+public fun heal(hero: &mut Hero, potion: Potion) {
+    assert!(hero.game_id == potion.game_id, EWRONG_GAME_PLAY);
+    let Potion { id, potency, game_id: _ } = potion;
+    object::delete(id);
+    let new_hp = hero.hp + potency;
+    // maximum HP của hero là 1000
+    hero.hp = std::u64::min(new_hp, MAX_HP)
+}
+
+/// Trang bị New Sword cho Hero và return old sword 
+public fun equip_sword(hero: &mut Hero, new_sword: Sword): Option<Sword> {
+    option::swap_or_fill(&mut hero.sword, new_sword)
+}
+
+/// Tháo Sword ra khỏi trang bị của Hero 
+public fun remove_sword(hero: &mut Hero): Sword {
+    assert!(option::is_some(&hero.sword), ENO_SWORD);
+    option::extract(&mut hero.sword)
+}
+```
+
+### Step 11: Tạo hàm lấy payment
+
++ Chỉ có `admin` mới có thể lấy payment 
+
+
+```rust
+/// -------------------------------------------------------------------------------
+/// ---------------------ENTRY FUNCTION LIÊN QUAN TỚI PAYMENT----------------------
+/// -------------------------------------------------------------------------------
+
+public entry fun take_payment(admin: &GameAdmin, game: &mut GameInfo, ctx: &mut TxContext
+) {
+    assert!(admin.game_id == object::id(game), ENOT_ADMIN);
+    let payment = coin::from_balance(balance::withdraw_all(&mut game.payments), ctx);
+    transfer::public_transfer(payment, tx_context::sender(ctx))
+}
+
+```
+
+### Step 12: Viết test case
+
+
+```rust
+/// tests/hero_tests.move
+let admin = @0xAD014;
+let player = @0x0;
+
+let mut scenario_val = test_scenario::begin(admin);
+let scenario = &mut scenario_val;
+// Run the create new game 
+test_scenario::next_tx(scenario, admin);
+{
+    new_game(test_scenario::ctx(scenario));
+};
+// Tạo Hero cùng với Sword
+test_scenario::next_tx(scenario, player);
+{
+    let mut game = test_scenario::take_shared<GameInfo>(scenario);
+    let coin = coin::mint_for_testing(500, test_scenario::ctx(scenario));
+    acquire_hero(&mut game, coin, test_scenario::ctx(scenario));
+    test_scenario::return_shared(game);
+};
+// Admin tạo boar cho Player 
+test_scenario::next_tx(scenario, admin);
+{
+    let game = test_scenario::take_shared<GameInfo>(scenario);
+    let game_ref = &game;
+    let mut admin_cap = test_scenario::take_from_sender<GameAdmin>(scenario);
+    send_boar(game_ref, &mut admin_cap, 10, 10, player, test_scenario::ctx(scenario));
+    test_scenario::return_to_sender(scenario, admin_cap);
+    test_scenario::return_shared(game);
+};
+// Player slays the boar!
+test_scenario::next_tx(scenario, player);
+{
+    let game = test_scenario::take_shared<GameInfo>(scenario);
+    let game_ref = &game;
+    let mut hero = test_scenario::take_from_sender<Hero>(scenario);
+    std::debug::print(&b"Before slaying boar, our hero is:".to_string());
+    std::debug::print(&hero);
+    let boar = test_scenario::take_from_sender<Boar>(scenario);
+    slay(game_ref, &mut hero, boar, test_scenario::ctx(scenario));
+    test_scenario::return_to_sender(scenario, hero);
+    test_scenario::return_shared(game);
+};
+
+test_scenario::next_tx(scenario, player);
+{
+    let hero = test_scenario::take_from_sender<Hero>(scenario);
+    std::debug::print(&b"After slaying boar, our updated hero is:".to_string());
+    std::debug::print(&hero);
+    test_scenario::return_to_sender(scenario, hero);
+};
+
+// Take Payment Checking 
+
+test_scenario::next_tx(scenario, admin);
+{
+    let game = test_scenario::take_shared<GameInfo>(scenario);
+    std::debug::print(&b"Before taking payment:".to_string());
+    std::debug::print(&game);
+    test_scenario::return_shared(game);
+};
+
+test_scenario::next_tx(scenario, admin);
+{
+    let mut game = test_scenario::take_shared<GameInfo>(scenario);
+    let admin_game = test_scenario::take_from_sender<GameAdmin>(scenario);
+    take_payment(&admin_game, &mut game, test_scenario::ctx(scenario));
+    test_scenario::return_to_sender(scenario, admin_game);
+    test_scenario::return_shared(game);
+
+};
+
+
+test_scenario::next_tx(scenario, admin);
+{
+    let game = test_scenario::take_shared<GameInfo>(scenario);
+    
+    std::debug::print(&b"After taking payment:".to_string());
+    std::debug::print(&game);
+    test_scenario::return_shared(game);
+};
+
+
+
+test_scenario::end(scenario_val);
+
+```
+
+
+
+## Cách publish và chạy game thông qua SUI CLI
+
+Lưu ý: 
++ Bạn cần phải có 2 account -> Account 1 cho admin, account 2 cho player 
++ Faucet coin SUI cho các account 
++ Khi bạn publish hay run game thì lưu ý phải thay đổi `packageId` và `objectId` trong cli 
++ Tham khảo thêm ở trên Suiscan để view được các thông tin on-chain
+
+
+Trong trường hợp này, mình sử dụng `nifty-alexandrite` cho `Player` và `lucid-sphene` cho `Admin` 
+
+```
+╭───────────────────┬────────────────────────────────────────────────────────────────────┬────────────────╮
+│ alias             │ address                                                            │ active address │
+├───────────────────┼────────────────────────────────────────────────────────────────────┼────────────────┤
+│ nifty-alexandrite │ 0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c │                │
+│ lucid-sphene      │ 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28 │ *              │
+╰───────────────────┴────────────────────────────────────────────────────────────────────┴────────────────╯
+```
+
++ Export biến 
+
+```bash
+export ADMIN=0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28
+export PLAYER=0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c
+```
+
+### Step 1: Publish game 
++ Sử dụng `lucid-sphene` để publish game 
+
+```bash
+sui client publish --gas-budget 100000000
+```
+
++ Kết quả
+
+```bash
+...
+│ Published Objects:                                                                               │
+│  ┌──                                                                                             │
+│  │ PackageID: 0x0816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b                 │
+│  │ Version: 1                                                                                    │
+│  │ Digest: 6JGSUL8gUU648ZCi1Gv7XSStTBxwZ7C59jGgUtQSaxFJ                                          │
+│  │ Modules: hero                                                                                 │
+│  └──                                                                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+...
+```
+
++ Sử dụng EXPORT để lưu packageId 
+
+```bash
+export PACKAGE_ID=0x0816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b
+```
+
+
+
+### Step 2: Tạo new game 
+
++ Sử dụng `lucid-sphene` để tạo new game 
+```bash
+sui client call --package $PACKAGE_ID --module hero --function new_game --gas-budget 100000000
+```
+
++ Kết quả 
+
+```bash
+...
+│ Created Objects:                                                                                   │
+│  ┌──                                                                                               │
+│  │ ObjectID: 0x72dfc389f24d0f63cce06b9502ba9cb8e0a9ce313962f8065efa1cdd2e2858a0                    │
+│  │ Sender: 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28                      │
+│  │ Owner: Shared( 289571933 )                                                                      │
+│  │ ObjectType: 0x816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b::hero::GameInfo   │
+│  │ Version: 289571933                                                                              │
+│  │ Digest: 3Ts3DZzBnhX6JAiEr16YjF5VXw9jyisL4eVMMq6eYmcZ                                            │
+│  └──                                                                                               │
+│  ┌──                                                                                               │
+│  │ ObjectID: 0x80099d4f44f6a013a0e6ec8668a619ff7880ab956278b883ac01cfe9e07864c3                    │
+│  │ Sender: 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28                      │
+│  │ Owner: Account Address ( 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28 )   │
+│  │ ObjectType: 0x816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b::hero::GameAdmin  │
+│  │ Version: 289571933                                                                              │
+│  │ Digest: 9T5FdpWZJozJkbNQRfyqSjVKcSjCgLRB6h35fTqRFvqA                                            │
+│  └── 
+...
+```
+
++ Object Id của GameInfo: `0x72dfc389f24d0f63cce06b9502ba9cb8e0a9ce313962f8065efa1cdd2e2858a0`
+
+```bash
+export GAME_INFO=0x72dfc389f24d0f63cce06b9502ba9cb8e0a9ce313962f8065efa1cdd2e2858a0
+```
+
++ Object Id của GameAdmin: `0x80099d4f44f6a013a0e6ec8668a619ff7880ab956278b883ac01cfe9e07864c3`
+
+```bash
+export GAME_ADMIN=0x80099d4f44f6a013a0e6ec8668a619ff7880ab956278b883ac01cfe9e07864c3
+```
+
+
+### Step 3: Tạo hero 
++ Sử dụng `nifty-alexandrite` để tạo hero 
+
+```bash
+sui client switch --address nifty-alexandrite
+```
+
++ Faucet để tạo 1 object coins mới hoặc sử dụng transfer coins (Bạn cần phải có 1 object coins mới)
+
+```bash
+sui client transfer-sui --to nifty-alexandrite --sui-coin-object-id 0xd9384d06b794e76383e5f798eb02c97d9a01525e598187b2c44bb9c6d7434e92 --amount 500000000 --gas-budget 100000000
+```
+
++ Sau khi tạo 1 object coin mới 
+```bash
+╭────────────────────────────────────────────────────────────────────┬────────────────────┬──────────────────╮
+│ gasCoinId                                                          │ mistBalance (MIST) │ suiBalance (SUI) │
+├────────────────────────────────────────────────────────────────────┼────────────────────┼──────────────────┤
+│ 0x240bc32f91d5ca0db1fe1e3dfa5ec9c0978956ebc9da371dd02f6d23813e8989 │ 500000000          │ 0.50             │
+│ 0xf23a5e0ab3f054ac8762ef9b09d8b118f5168cc6c2a49a253f49a4cfeed50923 │ 179105192          │ 0.17             │
+```
+
+
++ Lưu object coin mới vào biến 
+```bash
+export COIN=0x240bc32f91d5ca0db1fe1e3dfa5ec9c0978956ebc9da371dd02f6d23813e8989
+```
++ Tạo hero 
+
+```bash
+sui client call --package $PACKAGE_ID --module hero --function acquire_hero --args $GAME_INFO $COIN --gas-budget 100000000
+```
+
++ Kết quả 
+
+```bash
+│ Created Objects:                                                                                  │
+│  ┌──                                                                                              │
+│  │ ObjectID: 0x55291019b9bb75105ec5a4e0dc3643b1428c984b53a1f86ec4210e9082af28e2                   │
+│  │ Sender: 0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c                     │
+│  │ Owner: Account Address ( 0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c )  │
+│  │ ObjectType: 0x816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b::hero::Hero      │
+│  │ Version: 289571934                                                                             │
+│  │ Digest: CbLiGhmacsxHZzM8AeiKPJYycTqcXRH22tkKaBwEx1KY  
+```
+
++ Object Id của Hero: `0x55291019b9bb75105ec5a4e0dc3643b1428c984b53a1f86ec4210e9082af28e2`
+
+```bash
+export HERO=0x55291019b9bb75105ec5a4e0dc3643b1428c984b53a1f86ec4210e9082af28e2
+```
+
+
+### Step 4: Tạo boar
+
++ Chỉ có `Admin` mới tạo Boar -> switch account sang `lucid-sphene`
+
+```bash
+sui client switch --address lucid-sphene
+```
++ Tạo bear 
+```bash
+sui client call --package $PACKAGE_ID --module hero --function send_boar --args $GAME_INFO $GAME_ADMIN 10 1 $PLAYER --gas-budget 100000000
+```
+
++ Kết quả 
+```bash
+...
+ Created Objects:                                                                                   │
+│  ┌──                                                                                               │
+│  │ ObjectID: 0x3a3675e0c58694cbc031f0dff5d22892fe97722f0e61bad9ab67df5b82eaf821                    │
+│  │ Sender: 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28                      │
+│  │ Owner: Account Address ( 0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c )   │
+│  │ ObjectType: 0x816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b::hero::Boar       │
+│  │ Version: 289571935                                                                              │
+│  │ Digest: 4CQPs9Rcyc9ZtPR7xeMTk7uFsKAe2o5RJjB8oLAMeRwZ  
+...
+```
+
++ Object Id của Boar: `0x3a3675e0c58694cbc031f0dff5d22892fe97722f0e61bad9ab67df5b82eaf821`
+
++ Lưu object boar vào biến 
+```bash
+export BOAR=0x3a3675e0c58694cbc031f0dff5d22892fe97722f0e61bad9ab67df5b82eaf821
+```
+
+
+### Step 5: Đánh quái 
+
++ Sử dụng `nifty-alexandrite` để đánh quái 
+
+```bash
+sui client switch --address nifty-alexandrite
+```
+
++ Call hàm đánh quái 
+
+```bash
+sui client call --package $PACKAGE_ID --module hero --function slay --args $GAME_INFO $HERO $BOAR --gas-budget 100000000
+```
+
++ Kết quả
+
+```bash
+...
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Block Events                                                                              │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  ┌──                                                                                                  │
+│  │ EventID: 8GtPubC3J3KMcwotB9An1Hg3bGWS3qPFbxpsZ7iTvfV3:0                                            │
+│  │ PackageID: 0x0816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b                      │
+│  │ Transaction Module: hero                                                                           │
+│  │ Sender: 0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c                         │
+│  │ EventType: 0x816216c6f165ceb6125cd1f72b9185527f6534bf58f56e5c29575c95321c45b::hero::BoarSlainEvent │
+│  │ ParsedJSON:                                                                                        │
+│  │   ┌────────────────┬────────────────────────────────────────────────────────────────────┐          │
+│  │   │ boar           │ 0x3a3675e0c58694cbc031f0dff5d22892fe97722f0e61bad9ab67df5b82eaf821 │          │
+│  │   ├────────────────┼────────────────────────────────────────────────────────────────────┤          │
+│  │   │ game_id        │ 0x72dfc389f24d0f63cce06b9502ba9cb8e0a9ce313962f8065efa1cdd2e2858a0 │          │
+│  │   ├────────────────┼────────────────────────────────────────────────────────────────────┤          │
+│  │   │ hero           │ 0x55291019b9bb75105ec5a4e0dc3643b1428c984b53a1f86ec4210e9082af28e2 │          │
+│  │   ├────────────────┼────────────────────────────────────────────────────────────────────┤          │
+│  │   │ slayer_address │ 0xb2ff9d4b13077deecb7e03e2041772abcbe4b7720f413f84264c60384cf29b5c │          │
+│  │   └────────────────┴────────────────────────────────────────────────────────────────────┘          │
+│  └──                                                                                                  │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────╯
+...
+```
+
+
+### Step 6: Lấy payment
+
++ Sử dụng `lucid-sphene` để lấy payment 
+
+```bash
+sui client switch --address lucid-sphene
+```
+
++ Lấy payment 
+
+```bash
+sui client call --package $PACKAGE_ID --module hero --function take_payment --args $GAME_ADMIN $GAME_INFO --gas-budget 100000000
+```
+
++ Kết quả 
+
+```bash
+...
+│ Created Objects:                                                                                   │
+│  ┌──                                                                                               │
+│  │ ObjectID: 0x6f14e050068c87b13ded32c4cd171f351e344362d8fd8fed826ddae8f8e69617                    │
+│  │ Sender: 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28                      │
+│  │ Owner: Account Address ( 0xd51d17a672dfd63b91c1c555542f8151126f5e0872b85553644730c2471fdf28 )   │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                      │
+│  │ Version: 289571936                                                                              │
+│  │ Digest: 9rpiTJgqM3DDifmY6Bt4tgnNkn64ks7jkCfLTfKqSrAU                                            │
+│  └──      
+...
+```
+
+## Tài liệu tham khảo 
++ https://www.encode.club/sui-educate
++ https://docs.sui.io/guides/developer/advanced/randomness-onchain
+
+
