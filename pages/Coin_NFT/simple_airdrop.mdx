@@ -1,21 +1,35 @@
 # Build simple Coin airdrop module in Sui ( bài đọc thêm) 
 
-Review lại các bài học trước: 
 
-- Bạn đã học được cách tạo coin với `coin::create_currency` và trả về `TreasuryCap` được dùng để mint/burn/update metadata.
-- Thứ hai bạn đã được làm quen với coins module và cả balance nữa. Nôm na là balance giống cash money còn coins là wallet.
-- `TreasuryCap` và `Metadata` objects có thể được lưu trữ để truy cập theo chương trình mà không cần tài khoản owner  phải liên tục ký các giao dịch
+Trước khi đi sâu vào việc xây dựng module airdrop, chúng ta hãy ôn lại một số khái niệm cơ bản trong Sui mà chúng ta sẽ sử dụng. Hiểu rõ những thành phần cốt lõi này sẽ giúp bạn nắm bắt tốt hơn cách thức hoạt động của cơ chế airdrop.
 
-Để xây dựng module airdrop cho token VBICamp, chúng ta cần thực hiện các bước sau:
-1. Đầu tiên, chúng ta sẽ tạo một module mới có tên là `vbicamp_drop` để quản lý token LearnCamp
-2. Tiếp theo, chúng ta sẽ thiết lập các thông số cơ bản của token như tên, symbol và decimals, đồng thời lưu trữ object `TreasuryCap` để kiểm soát việc mint token
-3. Chúng ta sẽ tạo một hàm cho phép những người dùng được phép mint token VBICamp. Người dùng chỉ có thể mint token nếu họ nằm trong danh sách được phép (sử dụng hàm kiểm tra đơn giản `is_allowlisted`)
-4. Cuối cùng, mỗi khi có người mint token mới, chúng ta sẽ ghi lại thông tin bằng cách gửi một event `MintVBICampEvent` chứa thông tin về người mint và số lượng token đã tạo
+## Review lại các bài học trước: 
+Trong Sui, việc quản lý coin bao gồm nhiều thành phần quan trọng làm việc cùng nhau:
+1. create_currency: Hàm coin::create_currency là điểm khởi đầu để tạo một token mới. Hàm này trả về:
+* TreasuryCap: Object này cấp quyền để mint (tạo mới), burn (đốt) và cập nhật metadata của token
+* Metadata: Chứa thông tin cơ bản và các thuộc tính của token
 
+2. Sự Khác Biệt Giữa Coins và Balances:
+
+Balance giống như "tiền mặt" - thể hiện giá trị thuần túy
+Coin giống như ví điện tử để chứa các balance này
+
+
+
+# Xây Dựng Module Airdrop Token VBICamp
 
 ```rust
-module 0x123::vbicamp_drop {
+module 0x0::vbicamp {
+    
+    use sui::coin::{Self, TreasuryCap};
+    use sui::transfer;
+
+
+
     public struct VBICAMP has drop {}
+
+
+
 
     public struct VBICampTreasuryCapHolder has key {
         id: UID,
@@ -37,7 +51,8 @@ module 0x123::vbicamp_drop {
             option::none(),
             ctx,
         );
-        transfer::public_freeze(metadata);
+
+        transfer::public_freeze_object(metadata);
 
         let treasury_cap_holder = VBICampTreasuryCapHolder {
             id: object::new(ctx),
@@ -48,20 +63,77 @@ module 0x123::vbicamp_drop {
 
     entry fun mint(
         treasury_cap_holder: &mut VBICampTreasuryCapHolder, 
+        addresses: vector<address>,
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let sender = tx_context::sender(ctx)
+        let sender = tx_context::sender(ctx);
         let treasury_cap = &mut treasury_cap_holder.treasury_cap;
-        coin::mint_and_transfer(treasury_cap, amount, sender, ctx);
         
-        event::emit(MintVBICampEvent {
-            user: sender,
-            amount,
-        })
+        let size = addresses.length();
+
+        let mut i = 0;
+        
+        while (i < size) {
+            coin::mint_and_transfer(treasury_cap, amount,  addresses[i], ctx);
+            i = i + 1;
+        };
+       
     }
 }
 ```
+
+Ví dụ mình call function mint và air cho list 2 có 2 address: 
+```bash
+sui client call --package 0x41ab1cdc9537cfe98a711f4012acc55a02a0071f19ec7c5a9d25220c83439309 --module vbicamp --function mint --args 0xae24cdfae1c81cf53063880d03aacbe17000156ffe2bc8f7e8365f0dea07d3da "[0x0d1029ece6bc4735c13d991729616eaa3e3adf182d4639c1a40c5b9ffa923c50, 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a]" 20000000
+```
+
+Bạn sẽ được kết quả như thế này: 
+```bash
+
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Object Changes                                                                                                        │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Created Objects:                                                                                                      │
+│  ┌──                                                                                                                  │
+│  │ ObjectID: 0x40724a097e7c41936b272cb95ba01da017a9576ba9c5f55caf90f68c6dc86303                                       │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                         │
+│  │ Owner: Account Address ( 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a )                      │
+│  │ ObjectType: 0x2::coin::Coin<0x41ab1cdc9537cfe98a711f4012acc55a02a0071f19ec7c5a9d25220c83439309::vbicamp::VBICAMP>  │
+│  │ Version: 289571952                                                                                                 │
+│  │ Digest: EHRtMsfSmXY8WikAQYNFRBNLNuLsGccDkCK7NTVbYZCG                                                               │
+│  └──                                                                                                                  │
+│  ┌──                                                                                                                  │
+│  │ ObjectID: 0xca5b16ae1b38ce2c0b627522be6a5937280c7206070e1b3f26ed0438e498c43a                                       │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                         │
+│  │ Owner: Account Address ( 0x0d1029ece6bc4735c13d991729616eaa3e3adf182d4639c1a40c5b9ffa923c50 )                      │
+│  │ ObjectType: 0x2::coin::Coin<0x41ab1cdc9537cfe98a711f4012acc55a02a0071f19ec7c5a9d25220c83439309::vbicamp::VBICAMP>  │
+│  │ Version: 289571952                                                                                                 │
+│  │ Digest: ACQ1X9HghqiJhZMuWbqR5Sii5JMw8HvGRe6rMi9L7ybG                                                               │
+│  └──                                                                                                                  │
+│ Mutated Objects:                                                                                                      │
+│  ┌──                                                                                                                  │
+│  │ ObjectID: 0x16afcc17e5f21755f9369d3b452dc66707ba9f6965a7e9931e52a54a8df70df4                                       │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                         │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                      │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                                         │
+│  │ Version: 289571952                                                                                                 │
+│  │ Digest: J4eA3DLFsBaXewd3EGpTYGJybVMCqwnMMxxBWsRWSzv5                                                               │
+│  └──                                                                                                                  │
+│  ┌──                                                                                                                  │
+│  │ ObjectID: 0xae24cdfae1c81cf53063880d03aacbe17000156ffe2bc8f7e8365f0dea07d3da                                       │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                         │
+│  │ Owner: Shared( 289571951 )                                                                                         │
+│  │ ObjectType: 0x41ab1cdc9537cfe98a711f4012acc55a02a0071f19ec7c5a9d25220c83439309::vbicamp::VBICampTreasuryCapHolder  │
+│  │ Version: 289571952                                                                                                 │
+│  │ Digest: EPRtXjAu9Tcyie2VdCaGSRKDdysFFNum3xQL134ALTG3                                                               │
+│  └──                                                                                                                  │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+```
+
 
 Hoặc bạn có thể đọc sâu thêm về: 
 1. https://github.com/interest-protocol/sui-defi/blob/main/airdrop/sources/core.move#L80
