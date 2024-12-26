@@ -127,3 +127,46 @@ sui client call --package $PACKAGE_ID --module type_owner --function check_owner
 │    GHcAV2sA5LVxfQnz4RnDLPuat32CQmyuwov2wLsGXerG                                                   │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
+
+Trong phát triển ứng dụng, việc chứng minh  publisher (nhà phát hành) là rất cần thiết. Điều này đặc biệt quan trọng trong  tài sản số, nơi mà publisher có thể bật hoặc tắt các tính năng  cho tài sản của họ. Publisher Object là một object được định nghĩa trong Move Network, cho phép publisher chứng minh quyền kiểm soát của họ đối với một type.
+
+```
+// File: sui-framework/sources/package.move
+public struct Publisher has key, store {
+    id: UID,
+    package: String,
+    module_name: String,
+}
+
+```
+
+## Sử dụng Publisher Object như thế nào?
+
+Publisher object có 2 chức năng chính để chứng minh quyền sở hữu của người publish  đối với một type:
+
+```rust
+
+// Checks if the type is from the same module, hence the `Publisher` has the
+// authority over it.
+assert!(publisher.from_module<Book>(), 0);
+
+// Checks if the type is from the same package, hence the `Publisher` has the
+// authority over it.
+assert!(publisher.from_package<Book>(), 0);
+
+```
+
+## **Publisher as Admin Role**
+
+Đối với các ứng dụng nhỏ hoặc các trường hợp sử dụng đơn giản, Publisher object có thể được sử dụng như một admin capability.
+```rust
+/// Some action in the application gated by the Publisher object.
+public fun admin_action(cap: &Publisher, /* app objects... */ param: u64) {
+    assert!(cap.from_module<Book>(), ENotAuthorized);
+
+    // perform application-specific action
+}
+```
+
+## Vai trò của Publisher trong Sui 
+Publisher là yêu cầu bắt buộc cho một số tính năng trên Sui Network. Object Display chỉ có thể được tạo bởi Publisher, và TransferPolicy - một thành phần quan trọng của hệ thống Kiosk - cũng yêu cầu object Publisher để chứng minh quyền sở hữu của type.

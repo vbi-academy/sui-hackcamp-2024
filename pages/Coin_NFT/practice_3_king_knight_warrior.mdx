@@ -1,0 +1,301 @@
+# Practice 3: Ứng dụng OTW, Publisher và object display 
+Trong nội dung này mình sẽ thiết kế một game có cốt truyện sau: 
+
+**Nhà vua** sẽ chọn những **chiến binh có năng lự**c để thăng chức thành **hiệp sĩ**. Toàn bộ quá trình có thể chia thành các điểm sau:
+
+- Chỉ có **một nhà vua duy nhất**, và vua có thể **nâng cao năng lực dưới sự hướng dẫn của Thần (God aka là chúng ta admin)**
+- Điều kiện để **được thăng chức thành hiệp sĩ là năng lực của chiến binh không được thấp hơn nhà vua**. Mỗi hiệp sĩ  có giá trị năng lực của họ sẽ dừng lại ở tại đó và không thể cải thiện thêm.
+
+![](../assets/coin_nft/king.png)
+
+
+Như vậy liên quan gì đến OTW, publisher hay object display đúng không? Vì nội dung này dành cho beginners nên mục đích là để cho các bạn không cảm thấy nhàm chán và dễ hiểu. 
+
+
+Mình sẽ giải thích một chút về lý thuyết:
+
+## OTW 
+
+One-time witness (OTW) là một instance của một kiểu đặc biệt, việc định nghĩa nó yêu cầu các điều kiện sau:
+
+- Tên giống với module nhưng phải In hoa.
+- Có duy nhất drop ability
+
+OTW chỉ được tạo trong module initializer và được đảm bảo là duy nhất, có thể sử dụng `types::is_one_time_witness(&witness)` để xác định witness đầu vào có phải là *OTW* hay không. Như vậy từ câu chuyện king trên thì ta chỉ muốn tạo một **King** duy nhất.
+
+
+## Publisher 
+
+Publisher là một object đặc biệt **quản lý các quyền** trong system. Nó hoạt động như một keeper ( gác cổng) , kiểm tra xem các phần khác nhau của code (modules và packages) có được phép **làm việc với nhau hay không**. Publisher thực hiện điều này bằng cách sử dụng các lệnh đặc biệt như `package::from_module<T>` và `package::from_package<T>` để xác thực các kiểu dữ liệu và mối quan hệ giữa chúng.
+
+Để tạo một Publisher, chúng ta cần sử dụng OTW (One-Time Witness) đã đề cập trên đó. Có hai cách để thực hiện:
+
+1. Sử dụng `package::claim_and_keep(otw, ctx)` để tạo và ngay lập tức chuyển quyền sở hữu cho Publisher 
+2. Hoặc sử dụng `package::claim(otw, ctx)` để tạo Publisher trước, dùng nó cho các tác vụ khác (như thiết lập **object display**), sau đó thực hiện chuyển quyền sở hữu bằng lệnh **transfer**. 
+
+Trong ngữ cảnh câu chuyện mà mình viết ở trên, Publisher giống như một thế lực thần thánh( GOD 😂)  có  quyền đặc biệt - nó là thực thể duy nhất có k**hả năng giúp Nhà Vua trở nên mạnh mẽ hơn và cải thiện năng lực.**
+
+
+## Object display
+
+Sau khi có Publisher object, builder có thể dùng `sui::display` module để customize các properties cho một object bằng cách xử lý data off-chain. Mình lấy ví dụ mình có thể thêm một vài thuộc tính cho hero:
+
+```rust
+{
+    "name": "{name}",
+    "link": "https://sui-heroes.io/hero/{id}",
+    "img_url": "ipfs://{img_url}",
+    "description": "A true Hero of the Sui ecosystem!",
+    "project_url": "https://sui-heroes.io",
+    "creator": "Unknown Sui Fan"
+}
+```
+
+
+## Demo example 
+
+Đầu tiên mình sẽ tạo một  king module. Bởi vì chỉ có king duy nhất nên mình sẽ cần OTW để truyền witness vào. Và mình cũng dùng publisher object để đảm bảo King được định nghĩa trong cùng một package. 
+
+```rust
+module sui_hack_camp::king {
+    use sui::object::{Self, UID};
+    use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::types;
+    use sui::package::{Self, Publisher};
+
+    const ENOTPACKAGE: u64 = 1;
+
+    public struct King has key {
+        id: UID,
+        ability: u64,
+    }
+
+    public fun create_k<T: drop>(witness: T, ability: u64, ctx: &mut TxContext) {
+			  
+			  let king = King {
+            id: object::new(ctx),
+            ability,
+        }
+
+        transfer::transfer(king, ctx.sender());
+    }
+
+    entry fun upgrade_king_ability(publisher: &Publisher, king: &mut King) {
+        // check publisher 
+        assert!(package::from_package<King>(publisher), ENOTPACKAGE);
+        
+        king.ability = king.ability + 1;
+    }
+	
+		// get ability của king 
+    public fun get_ability(king: &King): u64 {
+        king.ability
+    }
+}
+```
+
+Tiếp theo là Warrior module, ai cũng có thể sỡ hữu cho mình một con warrior. Tuy nhiên để upgrade từ warrior lên thành knight thì warrior object sẽ phải bị removed đi. Và khi thành knight, ta sẽ handle các attributes mới cho nó ( nghe tương tự như object display phải không 👀) . 
+
+```rust
+module 0x0::warrior {
+
+    use std::string::String;
+
+    public struct Warrior has key {
+        id: UID,
+        name: String, 
+        ability: u64
+    }
+
+
+    entry fun create_w(name: String, ability: u64, ctx: &mut TxContext) {
+        
+        // same với king 
+        let warrior = Warrior {
+            id: object::new(ctx),
+            name,
+            ability,
+        }
+        
+        transfer::transfer(warrior, ctx.sender());
+    }
+
+    entry fun upgrade_ability_warrior(warrior: &mut Warrior) {
+        warrior.ability = warrior.ability + 1;
+    }
+
+
+    public fun remove_warrior(warror: Warrior): (String, u64){
+        let Warrior {id, name, ability} = warror;
+        object::delete(id);
+        
+        (name, ability)
+
+    }
+
+}
+```
+
+Tiếp theo là về `knight` module, 
+
+- Sử dụng **OTW để tạo Publisher,** sau đó dùng **Publisher để tạo Display object**. Display object **cho phép ta định nghĩa các thuộc tính (keys và values) cho Knight**. Ta có thể thay đổi các thuộc tính này bằng các hàm **add_multiple, edit, remove và update_version…..**
+- Sau khi được thăng chức thành Knight, object sẽ không thể thay đổi được nữa, vì vậy ta sử dụng **freeze_object** để chuyển quyền sở hữu thành immutable shared.
+
+```rust
+module 0x0::knight {
+	 
+    use sui::package;
+    use sui::display;
+    use sui::url::Url;
+	  
+
+    public struct KNIGHT has drop {}
+
+    public struct Knight has key {
+        id: UID,
+        name: String,
+        ability: u64,
+        image_url: Url
+    }
+
+    fun init(otw: KNIGHT, ctx: &mut TxContext) {
+        let keys = vector[
+            string::utf8(b"name is"),
+            string::utf8(b"ability is"),
+        ];
+
+        let values = vector[
+            string::utf8(b"{name}"),
+            string::utf8(b"{ability}"),
+        ];
+
+        let publisher = package::claim(otw, ctx);
+				
+        let display = display::new_with_fields<Knight>(&publisher, keys, values, ctx);
+        
+        display::update_version(&mut display);
+
+	      transfer::public_transfer(publisher, ctx.sender());
+        transfer::public_transfer(display, ctx.sender());
+    }
+
+    public fun create_knight(name: String, ability: u64, ctx: &mut TxContext) {
+        let knight = Knight {
+            id: object::new(ctx),
+            name,
+            ability,
+            image_url: url::new_unsafe_from_bytes(b"link o day nha")
+        };
+        
+        transfer::freeze_object(knight);
+    }
+}
+
+```
+
+Bây giờ mình  viết một hàm main để khởi tạo `King` object.  Khi thăng chức, hệ thống sẽ kiểm tra giá trị năng lực. Nếu đạt yêu cầu, thông tin từ warrior object sẽ được phân giải để tạo knight mới.
+
+```rust 
+module king_knight::test {
+    use sui::tx_context::TxContext;
+
+    use king_knight::warrior::{Self, Warrior};
+    use king_knight::king::{Self, King};
+    use king_knight::knight::create_knight;
+
+    const ENOTENOUGHABILITY: u64 = 0;
+
+    struct TEST has drop {}
+
+    fun init(otw: TEST, ctx: &mut TxContext) {
+        king::create_king(otw, ctx);
+    }
+
+    entry fun upgrade_to_knight(warrior: Warrior, king: &King, ctx: &mut TxContext) {
+        assert!(warrior::get_ability(&warrior) >= king::get_ability(king), ENOTENOUGHABILITY);
+       
+        let (name, ability) = warrior::destroy(warrior);
+        create_knight(name, ability, ctx);
+    }
+}
+```
+
+
+## function call 
+
+Sau khi chạy `sui client publish`: 
+
+
+```
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Object Changes                                                                                                            │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Created Objects:                                                                                                          │
+│  ┌──                                                                                                                      │
+│  │ ObjectID: 0x17cc0568b5a938b373761f43eb0c00d6c7dff2823e28e4925fab95bea45469d0                                           │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                             │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                          │
+│  │ ObjectType: 0x2::display::Display<0x5d8407c16e0f499e019d24b539ae44d9985d6968a2c219fc277ad620d869ad38::knight::Knight>  │
+│  │ Version: 289571546                                                                                                     │
+│  │ Digest: 2WJ4rJDHSV2DiwxnTNEKnpBJt4PpPoeZo2ojYNrKipqi                                                                   │
+│  └──                                                                                                                      │
+│  ┌──                                                                                                                      │
+│  │ ObjectID: 0x81aab895a39e53a0c90a359e3dc42b308c724d2a837c92ab0a8c43b627b30aaf                                           │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                             │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                          │
+│  │ ObjectType: 0x2::package::UpgradeCap                                                                                   │
+│  │ Version: 289571546                                                                                                     │
+│  │ Digest: ExT896choz8h5aNwgifjv5jwkrCcEFVmRwykZRKojXvz                                                                   │
+│  └──                                                                                                                      │
+│  ┌──                                                                                                                      │
+│  │ ObjectID: 0xc619a369d28c5ce668967cac2575ac3ed332fd96d7bffeb8c62a8bb10b18f8cf                                           │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                             │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                          │
+│  │ ObjectType: 0x5d8407c16e0f499e019d24b539ae44d9985d6968a2c219fc277ad620d869ad38::king::King                             │
+│  │ Version: 289571546                                                                                                     │
+│  │ Digest: Fy2k4FvcBF469pGpZPBPJVT29fZFbZ4yYJupfDaKRZLj                                                                   │
+│  └──                                                                                                                      │
+│  ┌──                                                                                                                      │
+│  │ ObjectID: 0xe1cb332e72b2a48ae03d683cf9cc0b88b3e21a0e21e7048bd07b781dbe603807                                           │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                             │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                          │
+│  │ ObjectType: 0x2::package::Publisher                                                                                    │
+│  │ Version: 289571546                                                                                                     │
+│  │ Digest: CNfVMZLb1yTbKhhT3xMGhCh2azNN9QhPyji49tpmVdVg                                                                   │
+│  └──                                                                                                                      │
+│ Mutated Objects:                                                                                                          │
+│  ┌──                                                                                                                      │
+│  │ ObjectID: 0x0efa2a3fe2b5989323a8fb199abeaeda5e3d7323ffc5e040629886ddcc0d9679                                           │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                             │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                          │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                                             │
+│  │ Version: 289571546                                                                                                     │
+│  │ Digest: 4W3QmwbfeF2wKE5AXg4Bj8f5BnpSdfVxHkkcePumEixt                                                                   │
+│  └──                                                                                                                      │
+│ Published Objects:                                                                                                        │
+│  ┌──                                                                                                                      │
+│  │ PackageID: 0x5d8407c16e0f499e019d24b539ae44d9985d6968a2c219fc277ad620d869ad38                                          │
+│  │ Version: 1                                                                                                             │
+│  │ Digest: GL2nCkw98Zp6zoi4fUd54i9HeS1Ke6a2fZxyabBE2jeM                                                                   │
+│  │ Modules: interact, king, knight, warrior                                                                               │
+│  └──                                                                                                                      │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+Mình sau đó sẽ export các values để dễ call hơn: 
+```bash
+export PACKAGE_ID=???
+export PUBLISHER=??
+export KING=??
+
+---
+ví dụ: 
+---
+export PACKAGE_ID=0x5d8407c16e0f499e019d24b539ae44d9985d6968a2c219fc277ad620d869ad38 
+export PUBLISHER=0xe1cb332e72b2a48ae03d683cf9cc0b88b3e21a0e21e7048bd07b781dbe603807
+export KING=0xc619a369d28c5ce668967cac2575ac3ed332fd96d7bffeb8c62a8bb10b18f8cf
+```
+
+Bạn có thể sử dụng `sui client object $KING` để xem thử king nhé. Các function sau bạn hãy xem ở trong video nhé. 
+

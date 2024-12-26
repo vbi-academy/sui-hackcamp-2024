@@ -4,7 +4,12 @@ Module Balance của Sui là một thành phần quan trọng để quản lý s
 
 Bài học sẽ phân tích chi tiết về cấu trúc, các hàm và cách sử dụng module Balance, giúp bạn hiểu rõ và tận dụng hiệu quả module này.
 
+
+![](../assets/coin_nft/balance_architecture.png)
+
+
 ## Thế nào là Balance module?
+
 
 Module Balance định nghĩa các struct chính sau:
 
@@ -24,11 +29,17 @@ public struct Balance<phantom T> has store {
 }
 ```
 
-# Các function chính khi bạn làm việc với Sui Balance
+## Các function chính khi bạn làm việc với Sui Balance
+
+
+
+![](../assets/coin_nft/flow_coin_balance.png)
 
 Module Balance cung cấp một số hàm  để quản lý số dư và nguồn cung. Sau đây là giới thiệu chi tiết về một số hàm quan trọng:
 
-**Hàm `value`**: Hàm **`value`** dùng để đọc số dư hiện tại của một Balance. Nó lấy giá trị số dư và trả về u64. Bạn có thể dùng hàm này để xem số dư trong ví của mình.
+### **Hàm `value`**: 
+
+Hàm **`value`** dùng để đọc số dư hiện tại của một Balance. Nó lấy giá trị số dư và trả về u64. Bạn có thể dùng hàm này để xem số dư trong ví của mình.
 
 ```rust
 public fun value<T>(self: &Balance<T>): u64 {
@@ -36,7 +47,9 @@ public fun value<T>(self: &Balance<T>): u64 {
 }
 ```
 
-Hàm `supply_value`: Dùng để lấy giá trị của một Supply cụ thể, thường được dùng khi  cần biết tổng cung của một loại token, ví dụ như kiểm tra số lượng token đã phát hành.
+### Hàm `supply_value`: 
+
+Dùng để lấy giá trị của một Supply cụ thể, thường được dùng khi  cần biết tổng cung của một loại token, ví dụ như kiểm tra số lượng token đã phát hành.
 
 ```rust
 public fun supply_value<T>(supply: &Supply<T>): u64 {
@@ -44,7 +57,9 @@ public fun supply_value<T>(supply: &Supply<T>): u64 {
 }
 ```
 
-`create_supply`: Tạo một Supply mới với giá trị ban đầu là 0. Hàm này thường được sử dụng khi bạn muốn tạo một loại token mới và khởi tạo nguồn cung cho nó.
+### `create_supply`: 
+
+Tạo một Supply mới với giá trị ban đầu là 0. Hàm này thường được sử dụng khi bạn muốn tạo một loại token mới và khởi tạo nguồn cung cho nó.
 
 
 ```rust
@@ -53,7 +68,9 @@ public fun create_supply<T: drop>(_: T): Supply<T> {
 }
 ```
 
-**Hàm increase_supply**: Tăng nguồn supply và tạo một Balance mới. Hàm này trước tiên kiểm tra xem việc tăng có gây tràn số( overflow) hay không, sau đó tăng giá trị của Supply theo số lượng được chỉ định và trả về một struct Balance mới với số lượng đã tăng.
+### **Hàm increase_supply**: 
+
+Tăng nguồn supply và tạo một Balance mới. Hàm này trước tiên kiểm tra xem việc tăng có gây tràn số( overflow) hay không, sau đó tăng giá trị của Supply theo số lượng được chỉ định và trả về một struct Balance mới với số lượng đã tăng.
 
 Hàm này thường được sử dụng khi mint token mới, ví dụ như phát hành thêm token để tăng nguồn cung trên thị trường.
 
@@ -65,7 +82,9 @@ public fun increase_supply<T>(self: &mut Supply<T>, value: u64): Balance<T> {
 }
 ```
 
-Hàm decrease_supply: Ngược lại với hàm increase_supply, hàm này dùng để hủy một Balance và giảm nguồn cung. Hàm sẽ lấy giá trị của Balance, kiểm tra xem Supply hiện tại có lớn hơn hoặc bằng số lượng cần giảm không, sau đó giảm giá trị của Supply và trả về số lượng đã giảm. Hàm này thường được sử dụng khi burn token.
+### Hàm decrease_supply: 
+
+Ngược lại với hàm increase_supply, hàm này dùng để hủy một Balance và giảm nguồn cung. Hàm sẽ lấy giá trị của Balance, kiểm tra xem Supply hiện tại có lớn hơn hoặc bằng số lượng cần giảm không, sau đó giảm giá trị của Supply và trả về số lượng đã giảm. Hàm này thường được sử dụng khi burn token.
 
 ```rust
 public fun decrease_supply<T>(self: &mut Supply<T>, balance: Balance<T>): u64 {
@@ -76,7 +95,9 @@ public fun decrease_supply<T>(self: &mut Supply<T>, balance: Balance<T>): u64 {
 }
 ```
 
-Hàm join: merge hai Balance thành một. Hàm này cộng giá trị của Balance được truyền vào với Balance hiện tại và trả về tổng giá trị. . Nó giống với  hàm join trong module Coin. Cách thức hoạt động bên trong của nó chính là gọi hàm join của module Balance.
+### Hàm join: 
+
+Merge hai Balance thành một. Hàm này cộng giá trị của Balance được truyền vào với Balance hiện tại và trả về tổng giá trị. . Nó giống với  hàm join trong module Coin. Cách thức hoạt động bên trong của nó chính là gọi hàm join của module Balance.
 
 ```rust
 public fun join<T>(self: &mut Balance<T>, balance: Balance<T>): u64 {
