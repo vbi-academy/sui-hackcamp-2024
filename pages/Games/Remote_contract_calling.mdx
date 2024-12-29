@@ -1,0 +1,67 @@
+# Remote contract Calling 
+
+Đây là bài học thêm để nâng cấp kiến thức của mọi người khi làm call contract với SUI mà cần tương tác với các contract khác. 
+
+Giả sử khi chúng ta có 2 contracts, một là contract phép tính cơ bản trên On chain và contract khác đang trong local thì làm cách nào để mình có thể call các function mà code contract 1 đã được save trên github hoặc trong folder khác ? 
+
+Trong ví dụ này, chúng ta sẽ thực hiện việc phát triển một smart contract  rồi đưa lên github và gọi nó trong contract local:
+```rust 
+module simple_calculator::Calculator{
+    use sui::event;
+    use sui::tx_context::{Self, TxContext}; 
+
+    public entry fun add(a: u64, b: u64, ctx: &TxContext ): u64{
+        let result = a + b;
+        result
+    }
+}
+```
+
+Sau khi bạn publish xong `package id` sẽ replace vào mục address của bạn nhé và thêm vào ở `published-at` . Đây là thông tin chi tiết trong file `Move.toml` được thay đổi lại: 
+
+```rust
+[package]
+name = "test_remote"
+edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
+published-at = "Fill cái package ID của bạn vào"
+
+[dependencies] 
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[addresses]
+test_remote =  "Fill cái package id của bạn vào đây"
+
+
+Ví dụ: 0x41e8d566250cd6859579e8c026c04885467a33f312ed7332aa33ac007272ef7c là package_id của mình thì 
+--- 
+[package]
+name = "test_remote"
+edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
+published-at = "0x41e8d566250cd6859579e8c026c04885467a33f312ed7332aa33ac007272ef7c"
+
+[dependencies] 
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[addresses]
+test_remote =  "0x41e8d566250cd6859579e8c026c04885467a33f312ed7332aa33ac007272ef7c"
+```
+
+Tiếp theo mình có thể tạo một `sui move new contract_caller` example khác:
+
+```rust 
+module 0x0::Caller {
+
+   // mình cần import từ package này 
+    use simple_calculator::Calculator::{Self};
+    use sui::tx_context::TxContext;
+
+    public entry fun add(a: u64, b: u64, ctx: &TxContext ) {
+        let _ = Calculator::add(a, b, ctx);
+    }
+```
+
+Để sử dụng được `simple_calculator::Calculator` như trên thì bạn cần phải nó vào đây: 
+```rust
+[dependencies]
+test_remote = { git = "https://github.com/hien-p/sui-remote-contract-example", subdir = "", rev = "main" }
+```
