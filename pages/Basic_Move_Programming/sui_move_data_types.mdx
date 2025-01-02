@@ -436,11 +436,11 @@ Note: `<u64>` không bắc buộc phải có nếu như đã có các phần t�
 
 
 ```rust 
-let v = vector::empty();
+let mut v = vector::empty();
 
-v::push_back(&mut v, 5);
-v::push_back(&mut v, 6);
-v::push_back(&mut v, 6);
+vector::push_back(&mut v, 5);
+vector::push_back(&mut v, 6);
+vector::push_back(&mut v, 6);
 ```
 
 ![](../assets/Basic_Move_Programming_image/AI_test_move.png)
