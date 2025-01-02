@@ -1,0 +1,81 @@
+# Giới thiệu về Programmable Transaction Block (PTB) 
+
+Programmable Transaction Block (PTB) là công nghệ lõi của Sui, được thiết kế để nâng cao tính linh hoạt và khả năng lập trình của các giao dịch. PTB cho phép chúng ta kết hợp nhiều thao tác vào một giao dịch duy nhất, cho phép thực thi logic giao dịch phức tạp chỉ với một lần submit. 
+
+
+PTB giải quyết một số vấn đề chính trong giao dịch blockchain:
+
+1.**Độ phức tạp của giao dịch**: Blockchain truyền thống chỉ thực thi một thao tác cho mỗi giao dịch. Logic nghiệp vụ phức tạp thường yêu cầu nhiều giao dịch, dẫn đến thao tác rườm rà và hiệu suất thấp. PTB cho phép kết hợp nhiều thao tác vào một giao dịch duy nhất, cải thiện hiệu quả xử lý nghiệp vụ.
+
+2.**Tính nguyên tử của các thao tác**: Trong nhiều giao dịch, nếu một bước thất bại, cần phải thực hiện các thao tác rollback phức tạp. PTB đảm bảo tính nguyên tử của tất cả các thao tác, ngăn chặn vấn đề không nhất quán dữ liệu do thành công một phần.
+
+3.**Hiệu năng mạng**: Bằng cách giảm số lượng giao dịch, PTB giảm băng thông mạng tiêu thụ và thời gian xác nhận giao dịch, nâng cao hiệu suất tổng thể.
+
+## Giới thiệu về câu lệnh với ptb 
+
+Nếu bạn đã làm việc với `sui client` thì còn có một sub-command mà bạn nên biết đó là `sui client ptb`. 
+
+```rust
+sui client ptb [OPTIONS]
+```
+
+trong đó phần `[OPTIONS]` chưa rất nhiều các functions cần thiết như là 
+
+### --assign command 
+Mục đích của câu lệnh này là bạn sẽ assign một biến để được sử dụng trong PTB commands 
+
+```rust
+sui client ptb --assign MYVAR 100 
+sui client ptb --assign X '[100, 5000]'
+```
+
+### --merge-coins command 
+Gộp nhiều đồng coin vào một đồng coin được chỉ định. Các ID của object cần được thêm ký hiệu @ ở phía trước.
+
+Syntax mà bạn cầnn truyền vào là: 
+```rust
+<INTO_COIN> <[COIN OBJECTS]>
+```
+
+Ví dụ: 
+
+```rust
+sui client ptb --merge-coins @coin_object_id '[@coin_obj_id1, @coin_obj_id2]'
+```
+
+### --slit-coins command 
+
+Split thành nhiều coins khác nhau: 
+
+```rust
+--split-coins gas '[1000, 5000, 75000]'
+--assign new_coins
+--split-coins @coin_object_id [100]
+```
+
+### --move-call command 
+
+Gọi một hàm Move được chỉ định. Đây là syntax: 
+
+```rust
+<PACKAGE::MODULE::FUNCTION> <TYPE_ARGS> <FUNCTION_ARGS>
+```
+
+Ví dụ: 
+
+```bash
+--move-call std::option::is_none <u64> none
+--assign a none
+--move-call std::option::is_none <u64> a
+```
+
+### --transfer-objects command 
+
+Transfer các objects để một address cụ thể:
+
+```rust 
+--transfer-objects [obj1, obj2, obj3] @address
+--split-coins gas [1000, 5000, 75000]
+--assign new_coins
+--transfer-objects [new_coins.0, new_coins.1, new_coins.2] @to_address
+```
