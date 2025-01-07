@@ -73,7 +73,6 @@ import { ConnectButton } from "@mysten/dapp-kit";
 
 function App() {
   const account = useCurrentAccount();
-
   return (
     <div>
 			<ConnectButton />
@@ -103,7 +102,7 @@ function App() {
 
 dApp Kit cũng hỗ trợ việc lấy dữ liệu  cho người dùng đang kết nối. Hook `useSuiClientQuery` có thể được sử dụng để gọi các phương thức RPC. Bạn có thể dùng `getOwnedObjects` để truy cập và hiển thị danh sách các object mà tài khoản đang kết nối sở hữu: 
 
-```rust
+```typescript
 export function OwnedObjects() {
 	const account = useCurrentAccount()!;
 	const { data } = useSuiClientQuery('getOwnedObjects', 

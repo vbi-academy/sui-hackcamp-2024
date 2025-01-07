@@ -1,0 +1,91 @@
+# Bài thực hành thêm viết escrow trong sui move 
+
+Nếu bạn chưa từng làm quen defi thì mình sẽ giải thích đơn giản là escrow giống như một cơ chế trung gian đảm bảo an toàn cho giao dịch giữa hai bên. Giống như khi bạn có một người trung gian đáng tin cậy giữ tiền hộ trong quá trình mua bán.
+
+Lợi ích của escrow:
+
+- An toàn vì không ai có thể lừa đảo - tiền được giữ bởi hợp đồng thông minh
+- Tự động thực hiện khi đủ điều kiện
+- Không cần tin tưởng đối tác vì có trung gian đảm bảo
+
+Mình sẽ code một module có 2 người làm một escrow transaction.  Người đề xuất sẽ bắt đầu quá trình ký quỹ bằng cách đưa ra một loại coin và xác định số lượng coin mong muốn nhận được. Người nhận đề xuất sẽ nhận được chính xác số lượng coin như mong đợi và sau đó coin được đề xuất ban đầu sẽ được chuyển cho người nhận đề xuất
+
+```rust 
+
+module 0x0::escrow {
+
+    use sui::object::{Self, ID, UID};
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use sui::balance::{Self, Balance};
+    use sui::coin::{Self, Coin};
+
+    public struct EscrowObject<phantom T, phantom E> has key , store {
+        id: UID,
+        sender: address, 
+        recipent: address,
+        token: Balance<T>,
+        expected_amount: u64,
+    }
+
+
+     public entry fun create_offer<OFFERED_TOKEN, EXPECTED_TOKEN>(
+        offeror_coin: &mut Coin<OFFERED_TOKEN>,
+        offered_amount: u64,
+        third_party: address,
+        expected_amount: u64,
+        ctx: &mut TxContext,
+    ) {
+
+        let offfered_token = coin::split(offeror_coin, expected_amount, ctx);
+
+        transfer::public_transfer(
+            EscrowObject<OFFERED_TOKEN, EXPECTED_TOKEN>{
+            id: object::new(ctx), 
+            sender: ctx.sender(),
+            recipent: third_party,
+            token: coin::into_balance<OFFERED_TOKEN>(offfered_token),
+            expected_amount 
+            }
+            , third_party)
+    }   
+
+    public entry fun take_offer<OFFERED_TOKEN, EXPECTED_TOKEN>(escrow: &mut EscrowObject<OFFERED_TOKEN, EXPECTED_TOKEN>, taker_coin: &mut Coin<EXPECTED_TOKEN>, ctx: &mut TxContext){
+        let expected_coin  = coin::split(taker_coin, escrow.expected_amount, ctx);
+
+        transfer::public_transfer(expected_coin, escrow.recipent);
+
+        let offered_token_value = balance::value(&escrow.token);
+        let offered_token = balance::split(&mut escrow.token, offered_token_value);
+
+        transfer::public_transfer(coin::from_balance(offered_token, ctx), ctx.sender());
+
+    }
+
+    public entry fun return_to_sender<OFFERED_TOKEN, EXPECTED_TOKEN>(obj: EscrowObject<OFFERED_TOKEN, EXPECTED_TOKEN>, ctx: &mut TxContext){
+        let EscrowObject { 
+        id, 
+        sender,
+        recipent,
+        token,
+        expected_amount
+        } = obj;
+
+
+        object::delete(id);
+        transfer::public_transfer(token.into_coin(ctx), sender);
+    }
+
+}
+
+```
+
+Bạn có thể chạy các lệnh sau ví dụ: 
+
+```rust
+sui client call --package $Package_id --module escrow --function create_offer --type-args 0x2::sui::SUI 0x2::sui::SUI --args 0x1aaeb0b2a45bedc002ca7a5873ae0d66ea3095c2d394ef7642274a0d132b7ad2 20 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a 100000
+
+---
+// sau đó thì bạn hoàn toàn có thể dùng thêm function take offer để lấy được tiền:
+sui client call --package $Package_id --module escrow --function take_offer --type-args 0x2::sui::SUI 0x2::sui::SUI --args 0x8e4c2b833552b2c80ea7c1970b2c76eb88add7fc5872bc1c3734e5d2a657de4f 0x16afcc17e5f21755f9369d3b452dc66707ba9f6965a7e9931e52a54a8df70df4
+```
