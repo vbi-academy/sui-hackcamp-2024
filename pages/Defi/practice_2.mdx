@@ -1,0 +1,366 @@
+# Defi > Practice 2: Cách viết flash loan 
+
+Trong bài học này các bạn sẽ được học cách viết flash loan trong sui move. Bạn có thể tham khảo đoạn code ở đây: https://github.com/MystenLabs/sui/tree/main/examples/move/flash_lender 
+
+
+
+Đây là đoạn code chi tiết: 
+```rust
+module 0x0::flash_lender { 
+    /// Module cho vay flash loan hoạt động với mọi loại Coin
+	use sui::balance::{Self, Balance};
+    use sui::coin::{Self, Coin};
+    use sui::object::{Self, ID, UID};
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+
+
+     /// Một đối tượng được chia sẻ cung cấp flash loan cho bất kỳ người mua nào sẵn sàng trả `fee`
+    public struct FlashLender<phantom T> has key {
+        id: UID,
+        /// Số coin có sẵn để cho vay
+        to_lend: Balance<T>,
+        /// Số lượng `Coin<T>` sẽ được tính phí cho khoản vay
+        /// Trong thực tế, đây thường là tỷ lệ phần trăm, nhưng
+        /// chúng ta sử dụng phí cố định ở đây để đơn giản hóa
+        fee: u64,
+    }
+
+
+    /// Một struct "hot potato" ghi lại số lượng `Coin<T>` đã được vay
+    /// Vì struct này không có khả năng `key` hoặc `store`, nó không thể được chuyển
+    /// hoặc lưu trữ vĩnh viễn. Vì nó không có khả năng `drop`, nó không thể bị hủy
+    /// Do đó, cách duy nhất để loại bỏ struct này là gọi `repay` trong giao dịch đã tạo ra nó
+    public struct Receipt<phantom T> {
+        /// ID của đối tượng flash lender mà người vay đã mượn từ
+        flash_lender_id: ID,
+        /// Tổng số tiền người vay phải trả lại: số tiền đã vay + phí
+        repay_amount: u64
+    }
+
+
+     /// Đối tượng cấp quyền rút và gửi tiền vào instance `FlashLender` với ID `flash_lender_id`
+    /// Ban đầu được cấp cho người tạo `FlashLender`, và chỉ có một `AdminCap` cho mỗi người cho vay
+    public struct AdminCap has key, store {
+        id: UID,
+        flash_lender_id: ID,
+    }
+
+
+     /// Tạo một đối tượng `FlashLender` được chia sẻ 
+    public fun new<T>(to_lend: Balance<T>, fee: u64, ctx: &mut TxContext): AdminCap {
+        
+        let id = object::new(ctx);
+        let flash_lender_id = object::uid_to_inner(&id);
+        let flash_lender = FlashLender { id, to_lend, fee };
+        
+        transfer::share_object(flash_lender);
+        AdminCap { id: object::new(ctx), flash_lender_id }
+    }
+
+      public entry fun create<T>(to_lend: Coin<T>, fee: u64, ctx: &mut TxContext) {
+        let balance = coin::into_balance(to_lend);
+        let admin_cap = new(balance, fee, ctx);
+        transfer::public_transfer(admin_cap, tx_context::sender(ctx))
+    }
+
+    // Core function 
+    /// Yêu cầu khoản vay `amount` từ `lender`
+    public fun loan<T>(
+        self: &mut FlashLender<T>, amount: u64, ctx: &mut TxContext
+    ): (Coin<T>, Receipt<T>) {
+        let to_lend = &mut self.to_lend;
+
+        assert!(balance::value(to_lend) >= amount, 0);
+
+        let loan = coin::take(to_lend, amount, ctx);
+        let repay_amount = amount + self.fee;
+        let receipt = Receipt { flash_lender_id: object::id(self), repay_amount };
+        (loan, receipt)
+    }
+
+     /// Trả lại khoản vay được ghi trong `receipt`
+    public fun repay<T>(self: &mut FlashLender<T>, payment: Coin<T>, receipt: Receipt<T>) {
+        let Receipt { flash_lender_id, repay_amount } = receipt;
+        coin::put(&mut self.to_lend, payment)
+    }
+
+
+    // function for admin 
+    public fun withdraw<T>(
+        self: &mut FlashLender<T>,
+        _: &AdminCap,
+        amount: u64,
+        ctx: &mut TxContext
+    ): Coin<T> {      
+        let to_lend = &mut self.to_lend;
+        coin::take(to_lend, amount, ctx)
+    }
+
+    /// Cho phép admin cập nhật phí
+    public entry fun update_fee<T>(
+        self: &mut FlashLender<T>, _: &AdminCap, new_fee: u64
+    ) {
+        self.fee = new_fee
+    }
+}
+```
+
+Tuy nhiên mình sẽ muốn update thêm một số đoạn code để tracking được thêm thông tin: 
+
+```rust
+    public struct EventLoan has copy, drop {
+        sender: address,
+        loan_amount: u64
+    }
+    
+    public struct EventRepay has copy, drop {
+        sender: address,
+        flash_lender_id: ID,
+        repay_amount: u64
+    }
+```
+
+Hàm repay lúc này sẽ là:
+
+```rust
+      /// Trả lại khoản vay được ghi trong `receipt`
+    public fun repay<T>(self: &mut FlashLender<T>, payment: &mut Coin<T>, receipt: Receipt<T>, ctx: &mut TxContext) {
+        let Receipt { flash_lender_id, repay_amount } = receipt;
+        
+	    let paid = coin::split(payment, repay_amount, ctx);
+        coin::put(&mut self.to_lend, paid);
+        
+        event::emit(EventRepay{
+            sender: ctx.sender(),
+            flash_lender_id: flash_lender_id,
+            repay_amount: repay_amount
+        });
+    }
+
+
+
+    public entry fun loan_and_repay<T>(self: &mut FlashLender<T>, amount: u64, payment: &mut Coin<T>, ctx: &mut TxContext) {
+
+        let (coin, receipt) = loan(self, amount, ctx);
+
+        coin::join(payment, coin);
+
+        event::emit(EventLoan{
+            sender: ctx.sender(),
+            loan_amount: amount
+        });
+
+        repay(self, payment, receipt, ctx);
+    }
+```
+
+
+
+
+{/* Table Styling */}
+<table className="mt-6 mb-6 min-w-full border dark:border-gray-800 rounded-lg overflow-hidden">
+  <thead>
+    <tr className="bg-[#27272a] dark:bg-[#27272a] text-white">
+      <th scope="col" className="px-6 py-3 text-left text-sm font-semibold">
+        Aliases
+      </th>
+      <th scope="col" className="px-6 py-3 text-left text-sm font-semibold">
+        address
+      </th>
+      <th scope="col" className="px-6 py-3 text-left text-sm font-semibold">
+        Role
+      </th>
+      <th scope="col" className="px-6 py-3 text-left text-sm font-semibold">
+        Number of Sui tokens owned
+      </th>
+    </tr>
+  </thead>
+  <tbody className="bg-white dark:bg-[#1e1e1e] divide-y divide-gray-200 dark:divide-gray-800">
+    <tr>
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+        Alice
+      </td>
+      <td className="px-6 py-4">
+        <code className="text-red-500 dark:text-red-400 font-mono text-xs bg-transparent">
+          0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb
+        </code>
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+        Administrator, lender
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+        1000
+      </td>
+    </tr>
+    <tr>
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+        Bob
+      </td>
+      <td className="px-6 py-4">
+        <code className="text-red-500 dark:text-red-400 font-mono text-xs bg-transparent">
+          0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a
+        </code>
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+        Lender
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+        100
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+## Contract deployment 
+
+Bạn sẽ chạy lệnh dưới đây để publish contract giúp mình: 
+```
+$ sui client publish --gas-budget 100000000
+```
+
+Set  object ID vào environment variable để dễ dàng calling. Ví dụ của mình là: 
+```
+export PACKAGE_ID=0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649
+```
+
+
+## Contract Interaction
+
+### Sử dụng hàm create để tạo flash loan
+
+Trong bài toán này mình sẽ giả định Coin type của mình sẽ là SUI. Tuy nhiên bạn có thể làm tương tự với các coin như ở task 2: 
+
+```
+export COIN_TYPE=0x2::sui::SUI
+```
+
+``` 
+sui client call --package $PACKAGE_ID --module flash_lender --function create --type-args $COIN_TYPE  --args $Coin_object 100
+```
+
+Đây là kết quả: 
+```rust
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Object Changes                                                                                                               │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Created Objects:                                                                                                             │
+│  ┌──                                                                                                                         │
+│  │ ObjectID: 0x8e8daf3bab1a1badb68a48d34cabce591c7e22bf15e407095ea8770514faeb55                                              │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                                │
+│  │ Owner: Shared( 289572253 )                                                                                                │
+│  │ ObjectType: 0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649::flash_lender::FlashLender<0x2::sui::SUI>  │
+│  │ Version: 289572253                                                                                                        │
+│  │ Digest: Efz2Mvgqbbugu12V9YP2C3ZDJp4LXXDi9jcpdrxXRUCc                                                                      │
+│  └──                                                                                                                         │
+│  ┌──                                                                                                                         │
+│  │ ObjectID: 0xd86e5fc7806297b362d688b8652437e09bc8c7c12c915c327988d0c42e3a7abb                                              │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                                │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                             │
+│  │ ObjectType: 0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649::flash_lender::AdminCap                    │
+│  │ Version: 289572253                                                                                                        │
+│  │ Digest: FoYkTe36cdaMDJJaYwzpXmB1hqGq2hMWbmFEuuJQpjdb                                                                      │
+│  └──                                                                                                                         │
+│ Mutated Objects:                                                                                                             │
+│  ┌──                                                                                                                         │
+│  │ ObjectID: 0x16afcc17e5f21755f9369d3b452dc66707ba9f6965a7e9931e52a54a8df70df4                                              │
+│  │ Sender: 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb                                                │
+│  │ Owner: Account Address ( 0x915c2d19ee5fde257693f25e6c2cabb04c25e7ae03932817d52e122258c88ddb )                             │
+│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                                                │
+│  │ Version: 289572253                                                                                                        │
+│  │ Digest: FMEZZnxZFRstet2s8PA2WTYBgG28KfHSYTtAbXfxVmsJ                                                                      │
+│  └──                                                                                                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+
+Như vậy các bạn sẽ phải record lại 2 object là: 
+
+```rust 
+export Admin_cap=0xd86e5fc7806297b362d688b8652437e09bc8c7c12c915c327988d0c42e3a7abb
+export Flash_lender=0x8e8daf3bab1a1badb68a48d34cabce591c7e22bf15e407095ea8770514faeb55
+```
+
+Xem chi tiết hơn với Flash loan object này bằng `sui client object $Flash_lender --json`: 
+
+```json
+{
+  "objectId": "0x8e8daf3bab1a1badb68a48d34cabce591c7e22bf15e407095ea8770514faeb55",
+  "version": "289572253",
+  "digest": "Efz2Mvgqbbugu12V9YP2C3ZDJp4LXXDi9jcpdrxXRUCc",
+  "type": "0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649::flash_lender::FlashLender<0x2::sui::SUI>",
+  "owner": {
+    "Shared": {
+      "initial_shared_version": 289572253
+    }
+  },
+  "previousTransaction": "FYXQv7zDomyH8VjT1uHBJ3z44aCsJyBPxzUn8AZBJo7J",
+  "storageRebate": "1808800",
+  "content": {
+    "dataType": "moveObject",
+    "type": "0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649::flash_lender::FlashLender<0x2::sui::SUI>",
+    "hasPublicTransfer": false,
+    "fields": {
+      "fee": "100",
+      "id": {
+        "id": "0x8e8daf3bab1a1badb68a48d34cabce591c7e22bf15e407095ea8770514faeb55"
+      },
+      "to_lend": "100000"
+    }
+  }
+}
+```
+
+
+### Bob flash loan 
+
+Giờ thì mình sẽ chuyển sang địa chỉ bob đi: 
+
+```bash
+sui client switch --address bob
+```
+
+Giờ mình sẽ tạo flash loan: 
+```rust
+sui client call --package $PACKAGE_ID --module flash_lender  --function loan_and_repay --type-args $COIN_TYPE --args $Flash_lender 200 $COIN_BOB 
+
+```
+Sau khi chạy function trên xong thì đây chính là thông tin event function của mình: 
+
+```rust
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Transaction Block Events                                                                                   │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  ┌──                                                                                                       │
+│  │ EventID: BkqQgRs8Mdx14iNGfAMSPyRxaWPqy144dESGS4F4fsk9:0                                                 │
+│  │ PackageID: 0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649                           │
+│  │ Transaction Module: flash_lender                                                                        │
+│  │ Sender: 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a                              │
+│  │ EventType: 0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649::flash_lender::EventLoan  │
+│  │ ParsedJSON:                                                                                             │
+│  │   ┌─────────────┬────────────────────────────────────────────────────────────────────┐                  │
+│  │   │ loan_amount │ 200                                                                │                  │
+│  │   ├─────────────┼────────────────────────────────────────────────────────────────────┤                  │
+│  │   │ sender      │ 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a │                  │
+│  │   └─────────────┴────────────────────────────────────────────────────────────────────┘                  │
+│  └──                                                                                                       │
+│  ┌──                                                                                                       │
+│  │ EventID: BkqQgRs8Mdx14iNGfAMSPyRxaWPqy144dESGS4F4fsk9:1                                                 │
+│  │ PackageID: 0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649                           │
+│  │ Transaction Module: flash_lender                                                                        │
+│  │ Sender: 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a                              │
+│  │ EventType: 0x1a310bd9be25b07a02f218226c14f427995f524e481524d24022f6ffda580649::flash_lender::EventRepay │
+│  │ ParsedJSON:                                                                                             │
+│  │   ┌─────────────────┬────────────────────────────────────────────────────────────────────┐              │
+│  │   │ flash_lender_id │ 0x8e8daf3bab1a1badb68a48d34cabce591c7e22bf15e407095ea8770514faeb55 │              │
+│  │   ├─────────────────┼────────────────────────────────────────────────────────────────────┤              │
+│  │   │ repay_amount    │ 300                                                                │              │
+│  │   ├─────────────────┼────────────────────────────────────────────────────────────────────┤              │
+│  │   │ sender          │ 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a │              │
+│  │   └─────────────────┴────────────────────────────────────────────────────────────────────┘              │
+│  └──                                                                                                       │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+```
+Như vậy nó đã tăng lên 200 so với 100 lúc trước 

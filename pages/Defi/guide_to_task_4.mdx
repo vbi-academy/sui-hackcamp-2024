@@ -1,0 +1,145 @@
+# hướng dẫn làm task 4 
+
+Trong phần code hợp đồng, logic code thực sự tương tự như phần chúng ta đã thảo luận trong task 4. Ở task 4, chúng ta deposit và withdraw một token và chơi game. Vì vậy ở task 5, chúng ta chỉ cần thêm một token nữa vào Pool token và tự động convert hai token trong pool token đó.
+
+Đây là contract design của mình. Các bạn nhớ xem phần video được hướng dẫn để để có thể hiểu cách import local từ folder khác nhé 
+
+```rust 
+module 0x0::my_swap { 
+
+	use task2::mycoin::MY_COIN;
+	use task2::my_faucet_coin::FAUCET_COIN;
+	
+	use sui::balance::{Self, Balance};
+	use sui::coin::{Self, Coin, from_balance, into_balance};
+	use sui::transfer::{share_object, transfer, public_transfer};
+	
+
+    public struct AdminCap has key {
+        id: UID
+    }
+
+	public struct Pool has key {
+        id: UID,
+        faucet_coin: Balance<FAUCET_COIN>,
+	    my_coin: Balance<MY_COIN>,
+	}
+
+
+    fun init(ctx: &mut TxContext) {
+    let pool = Pool {
+        id: object::new(ctx),
+        faucet_coin: balance::zero<HUAHUAHUA1223_FAUCET_COIN>(),
+        my_coin: balance::zero<HUAHUAHUA1223_COIN>(),
+    };
+
+    let admin = AdminCap { id: object::new(ctx) };
+
+    // Share swap pool
+    share_object(pool);
+    // Transfer admin rights to contract deployer
+    transfer(admin, ctx.sender());
+}
+
+```
+
+## Deposit tokens
+
+Chúng mình sẽ duy trì số dư( balance) của hai token trên dựa vào struct Pool và set up AdminCap để đảm bảo admin có quyền rút hoặc quản lý token. 
+
+```rust 
+// Store my_coin tokens
+public entry fun deposit_my_coin(
+    pool: &mut Pool,
+    user_coin: Coin<MY_COIN>,
+    amount: u64,
+    ctx: &mut TxContext,
+) {
+
+let coin_value = user_coin.value();
+    assert!(coin_value >= amount, EInputNotEnough);
+
+    // Convert Coin to Balance
+    let mut input_balance = into_balance(user_coin);
+    
+    if (coin_value == amount) {
+        // Input amount is all tokens
+        balance::join(&mut pool.my_coin, input_balance);
+
+    } else {
+        balance::join(
+            &mut pool.my_coin,
+            balance::split(&mut input_balance, amount),
+        );
+        
+       
+        let surplus_coin = from_balance(input_balance, ctx);
+        public_transfer(surplus_coin, ctx.sender());
+    };
+}
+
+```
+
+Logic với `FAUCET_COIN` cũng tương tự. 
+
+## Withdrawing Tokens 
+
+```rust 
+// Admin withdraws my_coin tokens
+public entry fun withdraw_coin(
+    _: &AdminCap,
+    pool: &mut Pool,
+    amount: u64,
+    ctx: &mut TxContext,
+) {
+
+    // Use from_balance to convert balance to coin type
+    let withdrawn_balance = balance::split(&mut pool.my_coin, amount);
+    let withdrawn_coin = from_balance(withdrawn_balance, ctx);
+
+    public_transfer(withdrawn_coin, ctx.sender());
+}
+
+// Admin withdraws faucet_coin tokens
+public entry fun withdraw_faucet_coin(
+    _: &AdminCap,
+    pool: &mut Pool,
+    amount: u64,
+    ctx: &mut TxContext,
+) {
+
+    // Use from_balance to convert balance to coin type
+    let withdrawn_balance = balance::split(&mut pool.faucet_coin, amount);
+
+    let withdrawn_coin = from_balance(withdrawn_balance, ctx);
+    public_transfer(withdrawn_coin, ctx.sender());
+}
+
+
+```
+
+
+## Token exchange 
+Yêu cầu tiếp theo là chức năng chính của pool token là thực hiện việc chuyển đổi qua lại giữa hai loại token. Dưới đây là hai logic chuyển đổi:
+
+```rust 
+public entry fun swap_faucet_coin_to_my_coin(
+    pool: &mut Pool,
+    user_coin: Coin<FAUCET_COIN>,
+    amount: u64,
+    ctx: &mut TxContext,
+) {
+    // Nạp faucet_coin vào pool để chuẩn bị đổi
+    deposit_faucet_coin(pool, user_coin, amount, ctx);
+
+    // 1 : 1    
+    let output_balance = balance::split(&mut pool.my_coin, amount);
+
+    let output_coin = from_balance(output_balance, ctx);
+
+    public_transfer(output_coin, ctx.sender());
+}
+
+```
+
+Tương tự với lại hàm kia, Để chạy được code, trước khi test, hãy đảm bảo tài khoản của bạn có đủ token task2. Để thuận tiện cho việc test, chúng ta sẽ dùng Sui CLI để đúc thêm 100 coin và 100 faucet_coin cho tài khoản. Nếu bạn chưa rõ về lệnh đúc token, bạn có thể tham khảo hướng dẫn Task2. 
