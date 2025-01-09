@@ -79,3 +79,133 @@ Transfer các objects để một address cụ thể:
 --assign new_coins
 --transfer-objects [new_coins.0, new_coins.1, new_coins.2] @to_address
 ```
+
+Mình có ví dụ sau đây publish một contract, call contract đo, mint NFT và transfer nó đến một địa chỉ bất kì. Như vậy cấu trúc sẽ là: 
+
+```bash
+sui client ptb \
+--move-call <PACKAGE-ID>::<MODULE>::<FUNCTION> <ARGS>  \
+--assign result \
+--transfer-objects [result] sender \
+--gas-budget 5000000 \
+--summary
+```
+
+Đây là contract mẫu của mình về mint NFT đó: 
+```rust
+module 0x0::mynft {
+
+    use sui::package::{Self, Publisher};
+    use sui::display::{Self, Display};
+    use std::string::{Self, String};
+
+    public  struct HelloWorldObject has key, store {
+        id: UID,
+        text: string::String
+    }
+
+    entry fun mint(ctx: &mut TxContext) {
+        let object = HelloWorldObject {
+            id: object::new(ctx),
+            text: string::utf8(b"Hello World!")
+        };
+        transfer::public_transfer(object, tx_context::sender(ctx));
+    }
+}
+```nodemon
+
+Như vậy đây sẽ là câu lệnh: 
+```
+sui client ptb \
+--move-call 0x4fbd542193a20993ce514db7cb259908852de7f045e3d3e9c1030ea777e216f2::mynft::mint \
+--gas-budget 5000000 \
+--summary
+```
+
+Đây chính là kết quả bạn sẽ nhận được: 
+```rust
+╭──────────────────────────────────────────────────────╮
+│ PTB Execution Summary                                │
+├──────────────────────────────────────────────────────┤
+│ Digest: A6qkvrA2s3moCxVDdG6TkHn5MHZHyhb8e7sRowEKV8CN │
+│ Status: success                                      │
+│ Gas Cost Summary:                                    │
+│    Storage Cost: 2439600                             │
+│    Computation Cost: 1000000                         │
+│    Storage Rebate: 978120                            │
+│    Non-refundable Storage Fee: 9880                  │
+╰──────────────────────────────────────────────────────╯
+```
+
+
+## Ví dụ TypeScript SDK dùng PTB
+**Khởi tạo project**:  Tạo và truy cập vào thư mục dự án để khởi tạo dự án
+```rust
+ mkdir ptb-project && cd ptb-project && pnpm init
+ 
+ pnpm install @mysten/sui
+```
+
+```typescript 
+import { Transaction } from '@mysten/sui/transactions';
+import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { getFaucetHost, requestSuiFromFaucetV1} from '@mysten/sui/faucet';
+
+
+const keypair = Ed25519Keypair.fromSecretKey("suiprivkey1qrttsfcmrca4cuc0ejwzkcezhmz487ksdyxgnj84dy50uyjn995mgy6e928");
+const secretKey = keypair.getSecretKey();
+console.log('Secret Key:', secretKey);
+
+const address = keypair.getPublicKey().toSuiAddress();
+console.log('Address :', address);
+
+
+const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+
+let balance = await client.getCoins({
+    owner: address,
+});
+console.log('balance :', balance);
+
+const tx = new Transaction();
+const [coin] = tx.splitCoins(tx.gas, [100]);
+tx.transferObjects([coin], address);
+
+tx.moveCall({
+    target: '0x4fbd542193a20993ce514db7cb259908852de7f045e3d3e9c1030ea777e216f2::mynft::mint'
+});
+
+tx.setGasPrice(1000);
+tx.setGasBudget(10000000);
+
+const result =await client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
+
+console.log(result);
+
+```
+
+và đây là kết quả: 
+
+```bash
+Secret Key: suiprivkey1qrttsfcmrca4cuc0ejwzkcezhmz487ksdyxgnj84dy50uyjn995mgy6e928
+Address : 0xebb5a8837f470e86e09c9c74d7abe9019be7dbf874866bb0bf9447861424372a
+balance : {
+  data: [
+    {
+      coinType: '0x2::sui::SUI',
+      coinObjectId: '0x777d98f486723a2ee895d7018bb09916a0bd227ae2ba27c71da6cac0b36cd8da',
+      version: '289572259',
+      digest: 'CSNh2Efbk2uaDMEbELAkdvrVbReGZb7GPYsUcMFJNXey',
+      balance: '2897245132',
+      previousTransaction: 'FXjobHuHqNihukiiygup4fP41gzrci2EvaENzmSNAGa5'
+    }
+  ],
+  nextCursor: '0x777d98f486723a2ee895d7018bb09916a0bd227ae2ba27c71da6cac0b36cd8da',
+  hasNextPage: false
+}
+{
+  digest: 'AdoQGhMTnnkgNkWuoB694FaLmj8wWBVCSiSEbXZVU1YQ',
+  confirmedLocalExecution: false
+}
+```
